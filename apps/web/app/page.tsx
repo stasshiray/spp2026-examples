@@ -47,6 +47,9 @@ export default function HomePage() {
       <p className="lead">
         Next.js читает демо-данные с Express API, который берёт их из PostgreSQL через Drizzle.
       </p>
+      <p className="lead">
+        Тест
+      </p>
 
       {!books && !error ? <p className="status">Загружаем книги…</p> : null}
       {error ? <p className="status error">Не удалось загрузить данные: {error}</p> : null}
