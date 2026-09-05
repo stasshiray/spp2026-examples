@@ -47,11 +47,7 @@ docker compose up --build
    - Free Web Service `lecture-1-api` из `apps/api/Dockerfile`
    - Free Web Service `lecture-1-web` из `apps/web/Dockerfile`
    - Free PostgreSQL `lecture-1-db`
-3. Auto-deploy выключен: деплой идёт из GitHub Actions через Deploy Hook каждого сервиса.
-4. В каждом web-сервисе: **Settings → Deploy Hook** — скопируйте URL.
-5. В GitHub: **Settings → Secrets and variables → Actions**:
-   - `RENDER_API_DEPLOY_HOOK_URL`
-   - `RENDER_WEB_DEPLOY_HOOK_URL`
+3. В `render.yaml` стоит `autoDeployTrigger: checksPass`: Render деплоит только после успешных CI checks (линтер и тесты) на связанной ветке. Если checks падают или их нет, деплой не стартует.
 
 `NEXT_PUBLIC_API_URL` на фронте берётся из публичного URL API-сервиса и нужен на этапе Docker-сборки Next.js.
 
@@ -65,7 +61,7 @@ docker compose up --build
 2. линтер
 3. тесты против Postgres service container
 
-На push в `master` после зелёных проверок: `POST` на deploy hook API и web.
+На push в `master` Render сам запускает деплой API и web, когда job `lint-and-test` зелёный.
 
 ## Полезные команды
 

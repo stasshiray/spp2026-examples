@@ -5,7 +5,7 @@ services:
     plan: free
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
-    autoDeploy: false
+    autoDeployTrigger: checksPass
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -21,7 +21,7 @@ services:
     plan: free
     dockerfilePath: ./apps/web/Dockerfile
     dockerContext: .
-    autoDeploy: false
+    autoDeployTrigger: checksPass
     healthCheckPath: /
     envVars:
       - key: NODE_ENV
