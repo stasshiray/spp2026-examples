@@ -1,0 +1,55 @@
+name: Deploy to GKE
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: gke-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
+      GKE_CLUSTER: ${{ vars.GKE_CLUSTER || secrets.GKE_CLUSTER }}
+      GKE_LOCATION: ${{ vars.GKE_LOCATION || secrets.GKE_LOCATION }}
+      GCP_REGION: ${{ vars.GCP_REGION || secrets.GCP_REGION }}
+      AR_REPOSITORY: ${{ vars.AR_REPOSITORY || secrets.AR_REPOSITORY || 'repository-1' }}
+      INGRESS_DOMAIN: ${{ vars.INGRESS_DOMAIN || secrets.INGRESS_DOMAIN }}
+      GATEWAY_CLASS: ${{ vars.GATEWAY_CLASS || secrets.GATEWAY_CLASS || 'gke-l7-global-external-managed' }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER || secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_SERVICE_ACCOUNT: ${{ vars.GCP_SERVICE_ACCOUNT || secrets.GCP_SERVICE_ACCOUNT }}
+      USE_GKE_GCLOUD_AUTH_PLUGIN: "True"
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check required variables
+        run: |
+          missing=0
+          for name in GCP_PROJECT_ID GKE_CLUSTER GKE_LOCATION GCP_REGION INGRESS_DOMAIN GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT; do
+            if [ -z "${!name}" ]; then
+              echo "Missing GitHub Actions variable or secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: gke-gcloud-auth-plugin,kubectl
+
+      - name: Deploy branch environment
+        run: ./k8s/deploy-gke-kubernetes.sh

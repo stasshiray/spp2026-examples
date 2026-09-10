@@ -64,6 +64,8 @@ docker compose up --build
 
 На push в `main` Render сам запускает деплой API и web, когда job `lint-and-test` зелёный.
 
+Вручную, с любой ветки: **Actions → Deploy to GKE → Run workflow**. В UI выберите ветку — namespace и URL берутся из её имени (`feature/login` → `feature-login`). Снести окружение: **Destroy GKE environment** (тоже `workflow_dispatch`; можно указать namespace явно).
+
 ## Локальный Kubernetes (Docker Desktop)
 
 Включите Kubernetes в Docker Desktop, затем:
@@ -112,6 +114,17 @@ URL: `http://{ветка}.{INGRESS_DOMAIN}` (ветка `main` → `http://main.
 ./k8s/destroy-gke-kubernetes.sh
 ```
 
+Тот же деплой/снос можно запустить из GitHub Actions с любой ветки (`workflow_dispatch`). Один раз в репозитории:
+
+1. Те же имена, что в `k8s/gke.env`, в **Secrets** или **Variables** (Settings → Secrets and variables → Actions): `GCP_PROJECT_ID`, `GKE_CLUSTER`, `GKE_LOCATION`, `GCP_REGION`, `INGRESS_DOMAIN`. Опционально `AR_REPOSITORY` (по умолчанию `repository-1`) и `GATEWAY_CLASS`. Вкладки разные: `/settings/secrets/actions` — secrets, `/settings/variables/actions` — variables; workflow читает и те и другие.
+2. Сервис-аккаунт и Workload Identity Federation (JSON-ключи в этом проекте запрещены политикой IAM):
+
+```bash
+./k8s/create-gke-github-sa.sh
+```
+
+Скрипт создаёт SA `github-actions`, выдаёт `roles/container.developer` и `roles/artifactregistry.writer`, пул/OIDC-провайдер GitHub и привязку к `origin` (`owner/repo`). В конце печатает ещё два значения: `GCP_WORKLOAD_IDENTITY_PROVIDER` и `GCP_SERVICE_ACCOUNT` — их тоже нужно добавить как secret или variable. Secret `GCP_SA_KEY` не нужен. Gateway должен уже стоять (`./k8s/install-gke-gateway.sh`). Если remote не GitHub, задайте `GITHUB_REPOSITORY=owner/repo`.
+
 Не удаляйте namespace `gateway`. Envoy Gateway в GKE не ставится — используется `GatewayClass` `gke-l7-global-external-managed`.
 
 ## Полезные команды
@@ -125,6 +138,7 @@ URL: `http://{ветка}.{INGRESS_DOMAIN}` (ветка `main` → `http://main.
 | `./k8s/deploy-local-kubernetes.sh` | окружение текущей ветки в локальный Kubernetes |
 | `./k8s/destroy-local-kubernetes.sh` | удалить namespace текущей ветки |
 | `./k8s/create-gke-artifact-registry.sh` | один раз: Artifact Registry `repository-1` и IAM |
+| `./k8s/create-gke-github-sa.sh` | один раз: SA GitHub Actions и Workload Identity Federation |
 | `./k8s/install-gke-gateway.sh` | один раз: Gateway в GKE |
 | `./k8s/deploy-gke-kubernetes.sh` | окружение текущей ветки в GKE |
 | `./k8s/destroy-gke-kubernetes.sh` | удалить namespace текущей ветки в GKE |

@@ -11,6 +11,7 @@ gke_load_env() {
     set +a
   fi
   GATEWAY_CLASS="${GATEWAY_CLASS:-gke-l7-global-external-managed}"
+  AR_REPOSITORY="${AR_REPOSITORY:-repository-1}"
 }
 
 gke_require_cmds() {
@@ -37,9 +38,18 @@ gke_require_vars() {
 }
 
 gke_namespace() {
-  git -C "$repo_root" rev-parse --abbrev-ref HEAD \
+  local raw="${1:-}"
+  if [ -z "$raw" ]; then
+    raw="${GITHUB_REF_NAME:-}"
+  fi
+  if [ -z "$raw" ]; then
+    raw="$(git -C "$repo_root" rev-parse --abbrev-ref HEAD)"
+  fi
+  printf '%s' "$raw" \
     | tr '[:upper:]' '[:lower:]' \
-    | sed -E 's/[^a-z0-9-]+/-/g; s/^-+//; s/-+$//'
+    | sed -E 's/[^a-z0-9-]+/-/g; s/^-+//; s/-+$//; s/-{2,}/-/g' \
+    | cut -c1-63 \
+    | sed -E 's/-+$//'
 }
 
 gke_credentials() {

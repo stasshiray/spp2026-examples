@@ -12,7 +12,7 @@ gke_require_cmds gcloud kubectl
 gke_require_vars GCP_PROJECT_ID GKE_CLUSTER GKE_LOCATION
 gke_credentials
 
-ns="$(gke_namespace)"
+ns="$(gke_namespace "${1:-}")"
 gke_protect_namespace "$ns"
 
 echo "Deleting namespace $ns"
