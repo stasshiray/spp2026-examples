@@ -1,13 +1,13 @@
 # Lecture 1 — Next.js + Express + PostgreSQL + Drizzle
 
-Демо для лекции: два отдельных приложения. Фронтенд на Next.js ходит в Express API, API читает данные из PostgreSQL через Drizzle. У каждого сервиса свой Dockerfile. Можно поднять стек через Docker Compose, задеплоить в **локальный Kubernetes** (Docker Desktop) или на **Render Free Tier**.
+Демо для лекции: два отдельных приложения. Фронтенд на Next.js ходит в Express API, API читает данные из PostgreSQL через Drizzle. У каждого сервиса свой Dockerfile. Можно поднять стек через Docker Compose, задеплоить в **локальный Kubernetes** (Docker Desktop), в **GKE** или на **Render Free Tier**.
 
 ## Как это устроено
 
 - `apps/web` — Next.js (App Router), в Docker собирается как `standalone`. Браузер ходит в API по `NEXT_PUBLIC_API_URL`. В Kubernetes URL пустой: запросы идут на тот же host (`/api/books`).
 - `apps/api` — Express + TypeScript + Drizzle. Отдаёт `/api/books`, `/api/health` и `GET /` (для проб балансировщика). При старте накатывает миграции и сидирует демо-книги.
 - `apps/web/Dockerfile` и `apps/api/Dockerfile` — отдельные образы, контекст сборки — корень репозитория (npm workspaces).
-- `k8s/manifests/` — Namespace, Postgres, API, web и Gateway API (`HTTPRoute`) для локального кластера.
+- `k8s/manifests/` — Namespace, Postgres, API, web и Gateway API (`HTTPRoute`) для локального кластера и GKE.
 
 ## Локальный запуск
 
@@ -81,6 +81,39 @@ docker compose up --build
 ./k8s/destroy-local-kubernetes.sh
 ```
 
+## GKE (Google Cloud)
+
+Нужны `gcloud`, `kubectl`, Docker и `envsubst`. Один раз создайте кластер GKE, скопируйте env и заполните `GCP_PROJECT_ID`, `GKE_CLUSTER`, `GKE_LOCATION`, `GCP_REGION` (`AR_REPOSITORY` по умолчанию `repository-1`):
+
+```bash
+cp k8s/gke.env.example k8s/gke.env
+./k8s/create-gke-artifact-registry.sh
+```
+
+Скрипт идемпотентный: включает Artifact Registry API, создаёт Docker-репозиторий `repository-1` в `GCP_REGION` (если его ещё нет), выдаёт `roles/artifactregistry.reader` Compute Engine default SA (чтобы ноды могли тянуть образы) и `roles/artifactregistry.writer` текущему `gcloud`-аккаунту (чтобы пушить). Без reader поды зависнут в `ImagePullBackOff` (403 Forbidden).
+
+Затем:
+
+```bash
+./k8s/install-gke-gateway.sh
+```
+
+Скрипт напечатает IP Gateway. Пропишите `INGRESS_DOMAIN` в `k8s/gke.env` как `{ip}.sslip.io` (например `8.232.28.79.sslip.io`), не голый `sslip.io`. После этого:
+
+```bash
+./k8s/deploy-gke-kubernetes.sh
+```
+
+Сборка идёт под `linux/amd64` (ноды GKE). С Mac без этого флага в реестр попадает `arm64`, и поды падают с `ImagePullBackOff` / `no match for platform in manifest`.
+
+URL: `http://{ветка}.{INGRESS_DOMAIN}` (ветка `main` → `http://main.{ip}.sslip.io`). Gateway слушает только HTTP `:80`; `https://` даёт обрыв TLS («filter aborted» / `SSL_ERROR_SYSCALL`). Снести окружение текущей ветки:
+
+```bash
+./k8s/destroy-gke-kubernetes.sh
+```
+
+Не удаляйте namespace `gateway`. Envoy Gateway в GKE не ставится — используется `GatewayClass` `gke-l7-global-external-managed`.
+
 ## Полезные команды
 
 | Команда | Назначение |
@@ -91,3 +124,7 @@ docker compose up --build
 | `./k8s/install-local-gateway.sh` | один раз: Envoy Gateway в Docker Desktop |
 | `./k8s/deploy-local-kubernetes.sh` | окружение текущей ветки в локальный Kubernetes |
 | `./k8s/destroy-local-kubernetes.sh` | удалить namespace текущей ветки |
+| `./k8s/create-gke-artifact-registry.sh` | один раз: Artifact Registry `repository-1` и IAM |
+| `./k8s/install-gke-gateway.sh` | один раз: Gateway в GKE |
+| `./k8s/deploy-gke-kubernetes.sh` | окружение текущей ветки в GKE |
+| `./k8s/destroy-gke-kubernetes.sh` | удалить namespace текущей ветки в GKE |

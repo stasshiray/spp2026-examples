@@ -4,6 +4,7 @@ dist
 out
 .env
 .env.local
+k8s/gke.env
 *.log
 .DS_Store
 coverage
