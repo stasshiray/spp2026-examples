@@ -1,12 +1,13 @@
 # Lecture 1 — Next.js + Express + PostgreSQL + Drizzle
 
-Демо для лекции: два отдельных приложения. Фронтенд на Next.js ходит в Express API, API читает данные из PostgreSQL через Drizzle. У каждого сервиса свой Dockerfile; деплой рассчитан на **Render Free Tier** (два web-сервиса + Postgres).
+Демо для лекции: два отдельных приложения. Фронтенд на Next.js ходит в Express API, API читает данные из PostgreSQL через Drizzle. У каждого сервиса свой Dockerfile. Можно поднять стек через Docker Compose, задеплоить в **локальный Kubernetes** (Docker Desktop) или на **Render Free Tier**.
 
 ## Как это устроено
 
-- `apps/web` — Next.js (App Router), в Docker собирается как `standalone`. Браузер ходит в API по `NEXT_PUBLIC_API_URL`.
-- `apps/api` — Express + TypeScript + Drizzle. Отдаёт `/api/books` и `/api/health`, при старте накатывает миграции и сидирует демо-книги.
+- `apps/web` — Next.js (App Router), в Docker собирается как `standalone`. Браузер ходит в API по `NEXT_PUBLIC_API_URL`. В Kubernetes URL пустой: запросы идут на тот же host (`/api/books`).
+- `apps/api` — Express + TypeScript + Drizzle. Отдаёт `/api/books`, `/api/health` и `GET /` (для проб балансировщика). При старте накатывает миграции и сидирует демо-книги.
 - `apps/web/Dockerfile` и `apps/api/Dockerfile` — отдельные образы, контекст сборки — корень репозитория (npm workspaces).
+- `k8s/manifests/` — Namespace, Postgres, API, web и Gateway API (`HTTPRoute`) для локального кластера.
 
 ## Локальный запуск
 
@@ -42,7 +43,7 @@ docker compose up --build
 
 ## Деплой на Render (Free Tier)
 
-1. Создайте репозиторий на GitHub и запушьте `master`.
+1. Создайте репозиторий на GitHub и запушьте `main`.
 2. В [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint**, укажите репозиторий. Файл `render.yaml` создаст:
    - Free Web Service `lecture-1-api` из `apps/api/Dockerfile`
    - Free Web Service `lecture-1-web` из `apps/web/Dockerfile`
@@ -55,13 +56,30 @@ docker compose up --build
 
 ## GitHub Actions
 
-На каждый push/PR в `master`:
+На каждый push/PR в `main`:
 
 1. `npm ci`
 2. линтер
 3. тесты против Postgres service container
 
-На push в `master` Render сам запускает деплой API и web, когда job `lint-and-test` зелёный.
+На push в `main` Render сам запускает деплой API и web, когда job `lint-and-test` зелёный.
+
+## Локальный Kubernetes (Docker Desktop)
+
+Включите Kubernetes в Docker Desktop, затем:
+
+```bash
+./k8s/install-local-gateway.sh
+./k8s/deploy-local-kubernetes.sh
+```
+
+Первый скрипт — один раз (Envoy Gateway); повторный запуск безопасен. Второй поднимает окружение текущей ветки: namespace и URL `http://{ветка}.localhost` (ветка `main` → http://main.localhost).
+
+Снести окружение текущей ветки (не удаляет `gateway` и `envoy-gateway-system`):
+
+```bash
+./k8s/destroy-local-kubernetes.sh
+```
 
 ## Полезные команды
 
@@ -70,4 +88,6 @@ docker compose up --build
 | `npm run dev` | API + Next.js параллельно |
 | `npm run db:generate` | сгенерировать миграции Drizzle |
 | `npm run build` | сборка web + api |
-| `docker compose up --build` | оба образа + Postgres локально |
+| `./k8s/install-local-gateway.sh` | один раз: Envoy Gateway в Docker Desktop |
+| `./k8s/deploy-local-kubernetes.sh` | окружение текущей ветки в локальный Kubernetes |
+| `./k8s/destroy-local-kubernetes.sh` | удалить namespace текущей ветки |

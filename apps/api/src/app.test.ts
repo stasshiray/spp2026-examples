@@ -37,6 +37,12 @@ describe("api", () => {
     expect(response.body).toEqual({ ok: true });
   });
 
+  it("returns health status on / for load balancer probes", async () => {
+    const response = await request(app).get("/");
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ ok: true });
+  });
+
   it("returns demo books from postgres", async () => {
     const response = await request(app).get("/api/books");
     expect(response.status).toBe(200);

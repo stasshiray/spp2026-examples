@@ -9,9 +9,12 @@ export function createApp(db: Database) {
   app.use(cors({ origin: true }));
   app.use(express.json());
 
-  app.get("/api/health", (_req, res) => {
+  const health = (_req: express.Request, res: express.Response) => {
     res.json({ ok: true });
-  });
+  };
+
+  app.get("/", health);
+  app.get("/api/health", health);
 
   app.get("/api/books", async (_req, res, next) => {
     try {

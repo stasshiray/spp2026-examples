@@ -1,0 +1,14 @@
+# Docker Desktop: LoadBalancer с externalTrafficPolicy=Local даёт пустые ответы на localhost.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: lecture
+  namespace: gateway
+  labels:
+    app.kubernetes.io/part-of: lecture-1
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        externalTrafficPolicy: Cluster
