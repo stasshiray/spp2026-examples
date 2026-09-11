@@ -9,6 +9,7 @@
     "dev": "concurrently -n api,web -c blue,green \"npm run dev -w api\" \"npm run dev -w web\"",
     "dev:db": "docker compose up db -d",
     "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "start": "concurrently -n api,web -c blue,green \"npm run start -w api\" \"npm run start -w web\"",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",

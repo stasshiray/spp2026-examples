@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
-import { createApp } from "./app.js";
-import { createDb, createPool } from "./db/client.js";
-import { runMigrations } from "./db/migrate.js";
-import { seedIfEmpty } from "./db/seed.js";
+import { createApp } from "./app";
+import { createDb, createPool } from "./db/client";
+import { runMigrations } from "./db/migrate";
+import { seedIfEmpty } from "./db/seed";
 import type pg from "pg";
-import type { Database } from "./db/client.js";
+import type { Database } from "./db/client";
 
 const databaseUrl = process.env.DATABASE_URL;
 

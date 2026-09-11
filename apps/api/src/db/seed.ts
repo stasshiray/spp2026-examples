@@ -1,6 +1,6 @@
 import { count } from "drizzle-orm";
-import type { Database } from "./client.js";
-import { profiles } from "./schema.js";
+import type { Database } from "./client";
+import { profiles } from "./schema";
 
 const DEMO_PROFILES = [
   {

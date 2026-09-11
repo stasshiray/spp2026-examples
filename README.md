@@ -25,10 +25,12 @@ npm run dev
 
 Локальный Postgres в Compose слушает **5433**, чтобы не пересечься с другими контейнерами на 5432. Если база уже поднималась со старым именем (`lecture`) или схемой (`books`), пересоздайте том: `docker compose down -v`, затем снова `docker compose up db -d`. То же для Kubernetes: снесите namespace ветки и задеплойте заново.
 
-Линтер и тесты (тесты API ходят в Postgres):
+Линтер, типы, сборка и тесты (тесты API ходят в Postgres):
 
 ```bash
 npm run lint
+npm run typecheck
+npm run build
 DATABASE_URL=postgres://postgres:postgres@localhost:5433/dating-app-db npm test
 ```
 
@@ -48,7 +50,7 @@ docker compose up --build
    - Free Web Service `dating-app-api` из `apps/api/Dockerfile`
    - Free Web Service `dating-app-web` из `apps/web/Dockerfile`
    - Free PostgreSQL `dating-app-db`
-3. В `render.yaml` стоит `autoDeployTrigger: checksPass`: Render деплоит только после успешных CI checks (линтер и тесты) на связанной ветке. Если checks падают или их нет, деплой не стартует.
+3. В `render.yaml` стоит `autoDeployTrigger: checksPass`: Render деплоит только после успешных CI checks (линтер, типы, сборка и тесты) на связанной ветке. Если checks падают или их нет, деплой не стартует.
 
 `NEXT_PUBLIC_API_URL` на фронте берётся из публичного URL API-сервиса и нужен на этапе Docker-сборки Next.js.
 
@@ -60,7 +62,9 @@ docker compose up --build
 
 1. `npm ci`
 2. линтер
-3. тесты против Postgres service container
+3. проверка типов (`tsc`)
+4. сборка API (esbuild) и web (`next build`)
+5. тесты против Postgres service container
 
 На push в `main` Render сам запускает деплой API и web, когда job `lint-and-test` зелёный.
 
@@ -135,6 +139,8 @@ URL: `http://{ветка}.{INGRESS_DOMAIN}` (ветка `main` → `http://main.
 | --- | --- |
 | `npm run dev` | API + Next.js параллельно |
 | `npm run db:generate` | сгенерировать миграции Drizzle |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | проверка типов (`tsc`) |
 | `npm run build` | сборка web + api |
 | `./k8s/install-local-gateway.sh` | один раз: Envoy Gateway в Docker Desktop |
 | `./k8s/deploy-local-kubernetes.sh` | окружение текущей ветки в локальный Kubernetes |

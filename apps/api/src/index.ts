@@ -1,9 +1,9 @@
 import "dotenv/config";
-import { createApp } from "./app.js";
-import { createDb, createPool } from "./db/client.js";
-import { createGracefulShutdown } from "./graceful-shutdown.js";
-import { runMigrations } from "./db/migrate.js";
-import { seedIfEmpty } from "./db/seed.js";
+import { createApp } from "./app";
+import { createDb, createPool } from "./db/client";
+import { createGracefulShutdown } from "./graceful-shutdown";
+import { runMigrations } from "./db/migrate";
+import { seedIfEmpty } from "./db/seed";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {

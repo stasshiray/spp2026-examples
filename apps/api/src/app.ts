@@ -1,7 +1,7 @@
 import cors from "cors";
 import express from "express";
-import type { Database } from "./db/client.js";
-import { profiles } from "./db/schema.js";
+import type { Database } from "./db/client";
+import { profiles } from "./db/schema";
 
 export type AppOptions = {
   isReady?: () => boolean;
