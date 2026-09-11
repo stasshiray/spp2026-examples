@@ -5,7 +5,7 @@ metadata:
   namespace: ${NAMESPACE}
   labels:
     app: api
-    app.kubernetes.io/part-of: lecture-1
+    app.kubernetes.io/part-of: dating-app
 spec:
   selector:
     app: api
@@ -21,7 +21,7 @@ metadata:
   namespace: ${NAMESPACE}
   labels:
     app: api
-    app.kubernetes.io/part-of: lecture-1
+    app.kubernetes.io/part-of: dating-app
 spec:
   replicas: 1
   selector:
@@ -31,17 +31,23 @@ spec:
     metadata:
       labels:
         app: api
-        app.kubernetes.io/part-of: lecture-1
+        app.kubernetes.io/part-of: dating-app
     spec:
       terminationGracePeriodSeconds: 30
       initContainers:
         - name: wait-for-postgres
           image: postgres:16-alpine
           imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: dating-app-config
+          env:
+            - name: PGPORT
+              value: "$(POSTGRES_PORT)"
           command:
             - sh
             - -c
-            - until pg_isready -h postgres -U postgres -d lecture; do sleep 2; done
+            - until pg_isready -h postgres -p "$PGPORT" -U postgres -d dating-app-db; do sleep 2; done
       containers:
         - name: api
           image: ${API_IMAGE}
@@ -57,7 +63,10 @@ spec:
             - name: DATABASE_SSL
               value: "false"
             - name: DATABASE_URL
-              value: postgres://postgres:postgres@postgres:5432/lecture
+              valueFrom:
+                secretKeyRef:
+                  name: dating-app-db
+                  key: DATABASE_URL
           resources:
             requests:
               cpu: 100m

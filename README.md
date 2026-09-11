@@ -7,7 +7,7 @@
 - `apps/web` — Next.js (App Router), в Docker собирается как `standalone`. Браузер ходит в API по `NEXT_PUBLIC_API_URL`. В Kubernetes URL пустой: запросы идут на тот же host (`/api/profiles`).
 - `apps/api` — Express + TypeScript + Drizzle. Отдаёт `/api/profiles`, `/api/health`, `/api/ready` и `GET /` (для проб балансировщика). При старте накатывает миграции и сидирует демо-профили. По SIGTERM/SIGINT перестаёт быть ready, закрывает HTTP и пул Postgres.
 - `apps/web/Dockerfile` и `apps/api/Dockerfile` — отдельные образы, контекст сборки — корень репозитория (npm workspaces).
-- `k8s/manifests/` — Namespace, Postgres, API, web и Gateway API (`HTTPRoute`) для локального кластера и GKE.
+- `k8s/manifests/` — Namespace, Postgres (вместе с ConfigMap `dating-app-config`), API, web и Gateway API (`HTTPRoute`) для локального кластера и GKE. Пароль БД не в git: скрипт деплоя создаёт Secret `dating-app-db` в namespace ветки. Порт Postgres — в ConfigMap (`POSTGRES_PORT`, по умолчанию `5432`); под читает его через `envFrom`.
 
 ## Локальный запуск
 
@@ -23,13 +23,13 @@ npm run dev
 - фронт: http://localhost:3000
 - API: http://localhost:4000/api/profiles
 
-Локальный Postgres в Compose слушает **5433**, чтобы не пересечься с другими контейнерами на 5432. Если база уже поднималась со старой схемой (`books`), пересоздайте том: `docker compose down -v`, затем снова `docker compose up db -d`.
+Локальный Postgres в Compose слушает **5433**, чтобы не пересечься с другими контейнерами на 5432. Если база уже поднималась со старым именем (`lecture`) или схемой (`books`), пересоздайте том: `docker compose down -v`, затем снова `docker compose up db -d`. То же для Kubernetes: снесите namespace ветки и задеплойте заново.
 
 Линтер и тесты (тесты API ходят в Postgres):
 
 ```bash
 npm run lint
-DATABASE_URL=postgres://postgres:postgres@localhost:5433/lecture npm test
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/dating-app-db npm test
 ```
 
 Прод-образы локально:
@@ -45,9 +45,9 @@ docker compose up --build
 
 1. Создайте репозиторий на GitHub и запушьте `main`.
 2. В [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint**, укажите репозиторий. Файл `render.yaml` создаст:
-   - Free Web Service `lecture-1-api` из `apps/api/Dockerfile`
-   - Free Web Service `lecture-1-web` из `apps/web/Dockerfile`
-   - Free PostgreSQL `lecture-1-db`
+   - Free Web Service `dating-app-api` из `apps/api/Dockerfile`
+   - Free Web Service `dating-app-web` из `apps/web/Dockerfile`
+   - Free PostgreSQL `dating-app-db`
 3. В `render.yaml` стоит `autoDeployTrigger: checksPass`: Render деплоит только после успешных CI checks (линтер и тесты) на связанной ветке. Если checks падают или их нет, деплой не стартует.
 
 `NEXT_PUBLIC_API_URL` на фронте берётся из публичного URL API-сервиса и нужен на этапе Docker-сборки Next.js.
@@ -75,7 +75,7 @@ docker compose up --build
 ./k8s/deploy-local-kubernetes.sh
 ```
 
-Первый скрипт — один раз (Envoy Gateway); повторный запуск безопасен. Второй поднимает окружение текущей ветки: namespace и URL `http://{ветка}.localhost` (ветка `main` → http://main.localhost).
+Первый скрипт — один раз (Envoy Gateway); повторный запуск безопасен. Второй поднимает окружение текущей ветки: namespace и URL `http://{ветка}.localhost` (ветка `main` → http://main.localhost). При первом деплое создаётся Secret `dating-app-db` со случайным паролем Postgres; повторный деплой его не трогает. Задать свой: `POSTGRES_PASSWORD=...` (URL-safe: буквы, цифры, `.` `_` `~` `-`). Порт БД — ConfigMap `dating-app-config` (`POSTGRES_PORT=5432` по умолчанию). Смена порта на уже существующем namespace не обновит `DATABASE_URL` в Secret: снесите namespace. Снос namespace удаляет Secret, ConfigMap и PVC.
 
 При остановке пода kubelet сразу снимает его с endpoints и запускает `preStop` (`sleep 5`), затем шлёт SIGTERM. API отвечает 503 на `/api/ready` (liveness `/api/health` остаётся 200), доживает in-flight запросы, закрывает пул и выходит до `terminationGracePeriodSeconds: 30`. У web тот же `preStop` и grace period; Next.js standalone сам закрывает HTTP по SIGTERM.
 
@@ -108,7 +108,7 @@ cp k8s/gke.env.example k8s/gke.env
 ./k8s/deploy-gke-kubernetes.sh
 ```
 
-Сборка идёт под `linux/amd64` (ноды GKE). С Mac без этого флага в реестр попадает `arm64`, и поды падают с `ImagePullBackOff` / `no match for platform in manifest`.
+Сборка идёт под `linux/amd64` (ноды GKE). С Mac без этого флага в реестр попадает `arm64`, и поды падают с `ImagePullBackOff` / `no match for platform in manifest`. Тот же Secret `dating-app-db`, что и локально: первый деплой namespace генерирует пароль (или берёт `POSTGRES_PASSWORD` из `gke.env` / окружения).
 
 URL: `http://{ветка}.{INGRESS_DOMAIN}` (ветка `main` → `http://main.{ip}.sslip.io`). Gateway слушает только HTTP `:80`; `https://` даёт обрыв TLS («filter aborted» / `SSL_ERROR_SYSCALL`). Снести окружение текущей ветки:
 
@@ -118,7 +118,7 @@ URL: `http://{ветка}.{INGRESS_DOMAIN}` (ветка `main` → `http://main.
 
 Тот же деплой/снос можно запустить из GitHub Actions с любой ветки (`workflow_dispatch`). Один раз в репозитории:
 
-1. Те же имена, что в `k8s/gke.env`, в **Secrets** или **Variables** (Settings → Secrets and variables → Actions): `GCP_PROJECT_ID`, `GKE_CLUSTER`, `GKE_LOCATION`, `GCP_REGION`, `INGRESS_DOMAIN`. Опционально `AR_REPOSITORY` (по умолчанию `repository-1`) и `GATEWAY_CLASS`. Вкладки разные: `/settings/secrets/actions` — secrets, `/settings/variables/actions` — variables; workflow читает и те и другие.
+1. Те же имена, что в `k8s/gke.env`, в **Secrets** или **Variables** (Settings → Secrets and variables → Actions): `GCP_PROJECT_ID`, `GKE_CLUSTER`, `GKE_LOCATION`, `GCP_REGION`, `INGRESS_DOMAIN`. Опционально `AR_REPOSITORY` (по умолчанию `repository-1`) и `GATEWAY_CLASS`. Вкладки разные: `/settings/secrets/actions` — secrets, `/settings/variables/actions` — variables; workflow читает и те и другие. Пароль БД в GitHub не нужен: каждая ветка получает свой Secret в кластере. Если нужен один известный пароль на все preview, добавьте optional secret `POSTGRES_PASSWORD`.
 2. Сервис-аккаунт и Workload Identity Federation (JSON-ключи в этом проекте запрещены политикой IAM):
 
 ```bash

@@ -75,3 +75,54 @@ gke_protect_namespace() {
     exit 1
   fi
 }
+
+ensure_postgres_port() {
+  POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+  if [[ ! "$POSTGRES_PORT" =~ ^[0-9]+$ ]] || [ "$POSTGRES_PORT" -lt 1 ] || [ "$POSTGRES_PORT" -gt 65535 ]; then
+    echo "POSTGRES_PORT must be an integer 1-65535" >&2
+    exit 1
+  fi
+  export POSTGRES_PORT
+}
+
+gke_apply_manifest() {
+  envsubst '${API_IMAGE} ${WEB_IMAGE} ${INGRESS_HOST} ${NAMESPACE} ${POSTGRES_PORT}' < "$1" | kubectl apply -f -
+}
+
+# Postgres user/db match probes and the API init container. Only the password varies.
+ensure_dating_app_db_secret() {
+  local ns="${1:-}"
+  if [ -z "$ns" ]; then
+    echo "ensure_dating_app_db_secret: namespace is required" >&2
+    exit 1
+  fi
+  if kubectl -n "$ns" get secret dating-app-db >/dev/null 2>&1; then
+    echo "Secret dating-app-db already exists in $ns"
+    return 0
+  fi
+
+  gke_require_cmds kubectl openssl
+
+  local user="postgres"
+  local db="dating-app-db"
+  local password="${POSTGRES_PASSWORD:-}"
+  if [ -z "$password" ]; then
+    # Old manifests used postgres/postgres; a leftover PVC still has that password.
+    if kubectl -n "$ns" get pvc postgres >/dev/null 2>&1; then
+      password="postgres"
+    else
+      password="$(openssl rand -hex 24)"
+    fi
+  elif [[ ! "$password" =~ ^[A-Za-z0-9._~-]+$ ]]; then
+    echo "POSTGRES_PASSWORD must be URL-safe (letters, digits, . _ ~ -)" >&2
+    exit 1
+  fi
+
+  ensure_postgres_port
+
+  kubectl -n "$ns" create secret generic dating-app-db \
+    --from-literal=POSTGRES_USER="$user" \
+    --from-literal=POSTGRES_PASSWORD="$password" \
+    --from-literal=POSTGRES_DB="$db" \
+    --from-literal=DATABASE_URL="postgres://${user}:${password}@postgres:${POSTGRES_PORT}/${db}"
+}

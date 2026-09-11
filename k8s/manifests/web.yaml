@@ -5,7 +5,7 @@ metadata:
   namespace: ${NAMESPACE}
   labels:
     app: web
-    app.kubernetes.io/part-of: lecture-1
+    app.kubernetes.io/part-of: dating-app
 spec:
   selector:
     app: web
@@ -21,7 +21,7 @@ metadata:
   namespace: ${NAMESPACE}
   labels:
     app: web
-    app.kubernetes.io/part-of: lecture-1
+    app.kubernetes.io/part-of: dating-app
 spec:
   replicas: 1
   selector:
@@ -31,7 +31,7 @@ spec:
     metadata:
       labels:
         app: web
-        app.kubernetes.io/part-of: lecture-1
+        app.kubernetes.io/part-of: dating-app
     spec:
       terminationGracePeriodSeconds: 30
       containers:

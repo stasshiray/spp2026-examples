@@ -3,7 +3,7 @@ kind: Namespace
 metadata:
   name: gateway
   labels:
-    app.kubernetes.io/part-of: lecture-1
+    app.kubernetes.io/part-of: dating-app
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -11,7 +11,7 @@ metadata:
   name: main-envoy-gateway
   namespace: gateway
   labels:
-    app.kubernetes.io/part-of: lecture-1
+    app.kubernetes.io/part-of: dating-app
 spec:
   gatewayClassName: ${GATEWAY_CLASS}
   listeners:

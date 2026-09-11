@@ -1,5 +1,5 @@
 {
-  "name": "lecture-1-example",
+  "name": "spp2026-examples",
   "private": true,
   "workspaces": [
     "apps/api",

@@ -24,6 +24,7 @@ jobs:
       GATEWAY_CLASS: ${{ vars.GATEWAY_CLASS || secrets.GATEWAY_CLASS || 'gke-l7-global-external-managed' }}
       GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER || secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       GCP_SERVICE_ACCOUNT: ${{ vars.GCP_SERVICE_ACCOUNT || secrets.GCP_SERVICE_ACCOUNT }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
       USE_GKE_GCLOUD_AUTH_PLUGIN: "True"
     steps:
       - uses: actions/checkout@v5

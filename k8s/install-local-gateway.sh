@@ -31,7 +31,7 @@ kubectl -n gateway patch gateway main-envoy-gateway --type merge --patch '{
       "parametersRef": {
         "group": "gateway.envoyproxy.io",
         "kind": "EnvoyProxy",
-        "name": "lecture"
+        "name": "dating-app"
       }
     }
   }

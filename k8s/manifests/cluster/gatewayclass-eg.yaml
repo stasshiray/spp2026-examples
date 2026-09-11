@@ -4,6 +4,6 @@ kind: GatewayClass
 metadata:
   name: eg
   labels:
-    app.kubernetes.io/part-of: lecture-1
+    app.kubernetes.io/part-of: dating-app
 spec:
   controllerName: gateway.envoyproxy.io/gatewayclass-controller

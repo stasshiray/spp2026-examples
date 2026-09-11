@@ -4,7 +4,7 @@ metadata:
   name: app-route
   namespace: ${NAMESPACE}
   labels:
-    app.kubernetes.io/part-of: lecture-1
+    app.kubernetes.io/part-of: dating-app
 spec:
   parentRefs:
     - name: main-envoy-gateway

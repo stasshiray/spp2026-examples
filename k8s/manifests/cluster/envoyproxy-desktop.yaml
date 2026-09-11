@@ -2,10 +2,10 @@
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
-  name: lecture
+  name: dating-app
   namespace: gateway
   labels:
-    app.kubernetes.io/part-of: lecture-1
+    app.kubernetes.io/part-of: dating-app
 spec:
   provider:
     type: Kubernetes

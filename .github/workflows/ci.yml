@@ -15,16 +15,16 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: lecture
+          POSTGRES_DB: dating-app-db
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d lecture"
+          --health-cmd "pg_isready -U postgres -d dating-app-db"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/lecture
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/dating-app-db
       NEXT_PUBLIC_API_URL: http://localhost:4000
     steps:
       - uses: actions/checkout@v5

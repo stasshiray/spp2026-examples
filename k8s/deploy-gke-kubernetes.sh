@@ -8,7 +8,7 @@ source "$k8s_dir/gke-common.sh"
 cd "$repo_root"
 
 gke_load_env
-gke_require_cmds gcloud kubectl docker envsubst
+gke_require_cmds gcloud kubectl docker envsubst openssl
 gke_require_vars GCP_PROJECT_ID GKE_CLUSTER GKE_LOCATION GCP_REGION AR_REPOSITORY INGRESS_DOMAIN
 gke_credentials
 
@@ -41,8 +41,13 @@ docker build --platform linux/amd64 -f ./apps/web/Dockerfile --build-arg NEXT_PU
 docker push "$API_IMAGE"
 docker push "$WEB_IMAGE"
 
-for manifest in "$manifests"/namespace.yaml "$manifests"/postgres.yaml "$manifests"/api.yaml "$manifests"/web.yaml "$manifests"/httproute.yaml; do
-  envsubst '${API_IMAGE} ${WEB_IMAGE} ${INGRESS_HOST} ${NAMESPACE}' < "$manifest" | kubectl apply -f -
+ensure_postgres_port
+
+gke_apply_manifest "$manifests"/namespace.yaml
+ensure_dating_app_db_secret "$NAMESPACE"
+
+for manifest in "$manifests"/postgres.yaml "$manifests"/api.yaml "$manifests"/web.yaml "$manifests"/httproute.yaml; do
+  gke_apply_manifest "$manifest"
 done
 
 kubectl -n "$NAMESPACE" rollout status deployment/postgres --timeout=5m

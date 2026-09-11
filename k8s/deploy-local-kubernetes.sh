@@ -2,8 +2,9 @@
 set -euo pipefail
 
 k8s_dir="$(cd "$(dirname "$0")" && pwd)"
-manifests="$k8s_dir/manifests"
-repo_root="$(cd "$k8s_dir/.." && pwd)"
+# shellcheck disable=SC1091
+source "$k8s_dir/gke-common.sh"
+
 cd "$repo_root"
 
 if ! kubectl get gatewayclass eg >/dev/null 2>&1; then
@@ -11,16 +12,25 @@ if ! kubectl get gatewayclass eg >/dev/null 2>&1; then
   exit 1
 fi
 
-docker build -f ./apps/api/Dockerfile -t lecture-api:dev .
-docker build -f ./apps/web/Dockerfile --build-arg NEXT_PUBLIC_API_URL= -t lecture-web:dev .
+docker build -f ./apps/api/Dockerfile -t dating-app-api:dev .
+docker build -f ./apps/web/Dockerfile --build-arg NEXT_PUBLIC_API_URL= -t dating-app-web:dev .
 
-export NAMESPACE="$(git rev-parse --abbrev-ref HEAD | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9-]+/-/g; s/^-+//; s/-+$//')"
-export API_IMAGE=lecture-api:dev
-export WEB_IMAGE=lecture-web:dev
+export NAMESPACE
+NAMESPACE="$(gke_namespace)"
+if [ -z "$NAMESPACE" ]; then
+  echo "Could not derive a Kubernetes namespace from the current branch" >&2
+  exit 1
+fi
+export API_IMAGE=dating-app-api:dev
+export WEB_IMAGE=dating-app-web:dev
 export INGRESS_HOST="${NAMESPACE}.localhost"
+ensure_postgres_port
 
-for manifest in "$manifests"/namespace.yaml "$manifests"/postgres.yaml "$manifests"/api.yaml "$manifests"/web.yaml "$manifests"/httproute.yaml; do
-  envsubst '${API_IMAGE} ${WEB_IMAGE} ${INGRESS_HOST} ${NAMESPACE}' < "$manifest" | kubectl apply -f -
+gke_apply_manifest "$manifests"/namespace.yaml
+ensure_dating_app_db_secret "$NAMESPACE"
+
+for manifest in "$manifests"/postgres.yaml "$manifests"/api.yaml "$manifests"/web.yaml "$manifests"/httproute.yaml; do
+  gke_apply_manifest "$manifest"
 done
 
 kubectl -n "$NAMESPACE" rollout status deployment/postgres --timeout=5m
