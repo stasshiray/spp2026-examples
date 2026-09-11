@@ -1,4 +1,4 @@
-# Lecture 1 — Next.js + Express + PostgreSQL + Drizzle
+# Dating App — Next.js + Express + PostgreSQL + Drizzle
 
 Демо для лекции: два отдельных приложения. Фронтенд на Next.js ходит в Express API, API читает данные из PostgreSQL через Drizzle. У каждого сервиса свой Dockerfile. Можно поднять стек через Docker Compose, задеплоить в **локальный Kubernetes** (Docker Desktop), в **GKE** или на **Render Free Tier**.
 
