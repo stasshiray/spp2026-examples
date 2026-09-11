@@ -1,0 +1,142 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: logs
+  labels:
+    app.kubernetes.io/part-of: dating-app
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dozzle
+  namespace: logs
+  labels:
+    app: dozzle
+    app.kubernetes.io/part-of: dating-app
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dozzle
+  labels:
+    app: dozzle
+    app.kubernetes.io/part-of: dating-app
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+    verbs: ["get"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dozzle
+  labels:
+    app: dozzle
+    app.kubernetes.io/part-of: dating-app
+subjects:
+  - kind: ServiceAccount
+    name: dozzle
+    namespace: logs
+roleRef:
+  kind: ClusterRole
+  name: dozzle
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dozzle
+  namespace: logs
+  labels:
+    app: dozzle
+    app.kubernetes.io/part-of: dating-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dozzle
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: dozzle
+        app.kubernetes.io/part-of: dating-app
+    spec:
+      serviceAccountName: dozzle
+      enableServiceLinks: false
+      containers:
+        - name: dozzle
+          image: ${DOZZLE_IMAGE}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: DOZZLE_MODE
+              value: k8s
+            - name: DOZZLE_AUTH_PROVIDER
+              value: simple
+            - name: DOZZLE_ENABLE_ACTIONS
+              value: "false"
+            - name: DOZZLE_ENABLE_SHELL
+              value: "false"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: users
+              mountPath: /data/users.yml
+              subPath: users.yml
+              readOnly: true
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: users
+          secret:
+            secretName: dozzle-users
+            items:
+              - key: users.yml
+                path: users.yml
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dozzle
+  namespace: logs
+  labels:
+    app: dozzle
+    app.kubernetes.io/part-of: dating-app
+spec:
+  selector:
+    app: dozzle
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

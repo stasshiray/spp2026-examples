@@ -12,8 +12,11 @@ if ! kubectl get gatewayclass eg >/dev/null 2>&1; then
   exit 1
 fi
 
-docker build -f ./apps/api/Dockerfile -t dating-app-api:dev .
-docker build -f ./apps/web/Dockerfile --build-arg NEXT_PUBLIC_API_URL= -t dating-app-web:dev .
+# Same tag every time (:dev) does not change the Deployment spec, so apply
+# keeps the old pods. Stamp the tag like GKE (git sha) plus a timestamp.
+image_tag="$(git rev-parse --short HEAD)-$(date +%Y%m%d%H%M%S)"
+docker build -f ./apps/api/Dockerfile -t "dating-app-api:${image_tag}" .
+docker build -f ./apps/web/Dockerfile --build-arg NEXT_PUBLIC_API_URL= -t "dating-app-web:${image_tag}" .
 
 export NAMESPACE
 NAMESPACE="$(gke_namespace)"
@@ -21,8 +24,8 @@ if [ -z "$NAMESPACE" ]; then
   echo "Could not derive a Kubernetes namespace from the current branch" >&2
   exit 1
 fi
-export API_IMAGE=dating-app-api:dev
-export WEB_IMAGE=dating-app-web:dev
+export API_IMAGE="dating-app-api:${image_tag}"
+export WEB_IMAGE="dating-app-web:${image_tag}"
 export INGRESS_HOST="${NAMESPACE}.localhost"
 ensure_postgres_port
 

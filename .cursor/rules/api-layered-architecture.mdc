@@ -1,0 +1,42 @@
+---
+description: Слоистая архитектура и практики поддерживаемого API (Node.js + TS + Express + Drizzle)
+globs: apps/api/**/*.ts
+alwaysApply: false
+---
+
+# API: слои и поддерживаемый код
+
+Держи Express, бизнес-логику и Drizzle в разных слоях. Обработчик не ходит в БД напрямую.
+
+```
+http (маршруты) → services → repos → Drizzle schema/client
+```
+
+- `src/http` — роуты, `req`/`res`, статус-коды, парсинг входа. Без SQL и `$infer`.
+- `src/services` — сценарии (список профилей, ошибки предметной области). Без `express`.
+- `src/repos` — запросы Drizzle, маппинг строк в типы. Без HTTP.
+- `src/db` — только schema, pool, migrate, seed.
+
+```typescript
+// ❌ BAD — запрос в обработчике
+app.get("/api/profiles", async (_req, res) => {
+  res.json(await db.select().from(profiles));
+});
+
+// ✅ GOOD
+app.get("/api/profiles", async (_req, res, next) => {
+  try {
+    res.json(await profileService.list());
+  } catch (error) {
+    next(error);
+  }
+});
+```
+
+- Строгий TypeScript: без `any`, публичные типы из domain/schema (`Profile`), не «сырой» row из роута.
+- Зависимости внутрь через аргументы (`createApp(db)` / `createProfileService(repo)`), не через синглтон БД.
+- Ошибки: `next(error)` в async-роутах, один error middleware, клиенту без стека.
+- Логи: JSON (`pino`), `requestId` из контекста запроса, не логировать секреты и `DATABASE_URL`.
+- Схема — источник правды; миграции только через Drizzle Kit, не править SQL вручную в обход `db:generate`.
+- Новые фичи — новый service/repo (или метод), не раздувать `app.ts`.
+- Тесты: сервис — без HTTP; роут — через `supertest` на `createApp`.

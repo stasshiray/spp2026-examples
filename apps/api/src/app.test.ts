@@ -4,8 +4,11 @@ import { createApp } from "./app";
 import { createDb, createPool } from "./db/client";
 import { runMigrations } from "./db/migrate";
 import { seedIfEmpty } from "./db/seed";
+import { createLogger } from "./logger";
 import type pg from "pg";
 import type { Database } from "./db/client";
+
+const silentLogger = createLogger({ level: "silent" });
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -24,7 +27,7 @@ describe("api", () => {
     db = createDb(pool);
     await runMigrations(db);
     await seedIfEmpty(db);
-    app = createApp(db);
+    app = createApp(db, { logger: silentLogger });
   });
 
   afterAll(async () => {
@@ -35,6 +38,15 @@ describe("api", () => {
     const response = await request(app).get("/api/health");
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ ok: true });
+    expect(response.headers["x-request-id"]).toEqual(expect.any(String));
+  });
+
+  it("reuses incoming X-Request-Id on the response", async () => {
+    const response = await request(app)
+      .get("/api/health")
+      .set("X-Request-Id", "lecture-req-1");
+    expect(response.status).toBe(200);
+    expect(response.headers["x-request-id"]).toBe("lecture-req-1");
   });
 
   it("returns health status on / for load balancer probes", async () => {
@@ -50,7 +62,10 @@ describe("api", () => {
   });
 
   it("returns 503 from /api/ready when shutting down", async () => {
-    const shuttingDown = createApp(db, { isReady: () => false });
+    const shuttingDown = createApp(db, {
+      isReady: () => false,
+      logger: silentLogger,
+    });
     const response = await request(shuttingDown).get("/api/ready");
     expect(response.status).toBe(503);
     expect(response.body).toEqual({ ok: false });

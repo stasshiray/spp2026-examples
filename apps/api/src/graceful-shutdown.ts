@@ -1,5 +1,6 @@
 import type { Server } from "node:http";
 import { promisify } from "node:util";
+import { logger } from "./logger";
 
 const FORCE_EXIT_MS = 20_000;
 
@@ -21,10 +22,10 @@ export function createGracefulShutdown(
     }
 
     ready = false;
-    console.log(`Received ${signal}, shutting down`);
+    logger.info({ signal }, "shutting down");
 
     const forceExit = setTimeout(() => {
-      console.error("Graceful shutdown timed out, exiting");
+      logger.error({ signal, timeoutMs }, "graceful shutdown timed out");
       process.exit(1);
     }, timeoutMs);
     forceExit.unref();
@@ -34,9 +35,10 @@ export function createGracefulShutdown(
         await promisify(server.close.bind(server))();
       }
       await close();
+      logger.info({ signal }, "shutdown complete");
       process.exit(0);
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error, signal }, "shutdown failed");
       process.exit(1);
     }
   }

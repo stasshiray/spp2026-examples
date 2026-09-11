@@ -41,11 +41,12 @@ const DEMO_PROFILES = [
   },
 ];
 
-export async function seedIfEmpty(db: Database) {
+export async function seedIfEmpty(db: Database): Promise<boolean> {
   const [row] = await db.select({ value: count() }).from(profiles);
   if ((row?.value ?? 0) > 0) {
-    return;
+    return false;
   }
 
   await db.insert(profiles).values(DEMO_PROFILES);
+  return true;
 }

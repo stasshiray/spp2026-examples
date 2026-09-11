@@ -8,6 +8,7 @@
 - `apps/api` — Express + TypeScript + Drizzle. Отдаёт `/api/profiles`, `/api/health`, `/api/ready` и `GET /` (для проб балансировщика). При старте накатывает миграции и сидирует демо-профили. По SIGTERM/SIGINT перестаёт быть ready, закрывает HTTP и пул Postgres.
 - `apps/web/Dockerfile` и `apps/api/Dockerfile` — отдельные образы, контекст сборки — корень репозитория (npm workspaces).
 - `k8s/manifests/` — Namespace, Postgres (вместе с ConfigMap `dating-app-config`), API, web и Gateway API (`HTTPRoute`) для локального кластера и GKE. Пароль БД не в git: скрипт деплоя создаёт Secret `dating-app-db` в namespace ветки. Порт Postgres — в ConfigMap (`POSTGRES_PORT`, по умолчанию `5432`); под читает его через `envFrom`.
+- Логи: Dozzle в namespace `logs` (`k8s/manifests/cluster/dozzle.yaml`) — живой просмотр stdout/stderr всех подов, тот же UI локально и в GKE. В GKE контейнерные логи дополнительно пишутся в Cloud Logging.
 
 ## Локальный запуск
 
@@ -76,14 +77,36 @@ docker compose up --build
 
 ```bash
 ./k8s/install-local-gateway.sh
+./k8s/install-local-logs.sh
 ./k8s/deploy-local-kubernetes.sh
 ```
 
-Первый скрипт — один раз (Envoy Gateway); повторный запуск безопасен. Второй поднимает окружение текущей ветки: namespace и URL `http://{ветка}.localhost` (ветка `main` → http://main.localhost). При первом деплое создаётся Secret `dating-app-db` со случайным паролем Postgres; повторный деплой его не трогает. Задать свой: `POSTGRES_PASSWORD=...` (URL-safe: буквы, цифры, `.` `_` `~` `-`). Порт БД — ConfigMap `dating-app-config` (`POSTGRES_PORT=5432` по умолчанию). Смена порта на уже существующем namespace не обновит `DATABASE_URL` в Secret: снесите namespace. Снос namespace удаляет Secret, ConfigMap и PVC.
+Первые два скрипта — один раз (Envoy Gateway и Dozzle); повторный запуск безопасен. Второй поднимает окружение текущей ветки: namespace и URL `http://{ветка}.localhost` (ветка `main` → http://main.localhost). При первом деплое создаётся Secret `dating-app-db` со случайным паролем Postgres; повторный деплой его не трогает. Задать свой: `POSTGRES_PASSWORD=...` (URL-safe: буквы, цифры, `.` `_` `~` `-`). Порт БД — ConfigMap `dating-app-config` (`POSTGRES_PORT=5432` по умолчанию). Смена порта на уже существующем namespace не обновит `DATABASE_URL` в Secret: снесите namespace. Снос namespace удаляет Secret, ConfigMap и PVC.
 
 При остановке пода kubelet сразу снимает его с endpoints и запускает `preStop` (`sleep 5`), затем шлёт SIGTERM. API отвечает 503 на `/api/ready` (liveness `/api/health` остаётся 200), доживает in-flight запросы, закрывает пул и выходит до `terminationGracePeriodSeconds: 30`. У web тот же `preStop` и grace period; Next.js standalone сам закрывает HTTP по SIGTERM.
 
-Снести окружение текущей ветки (не удаляет `gateway` и `envoy-gateway-system`):
+Логи всех подов (один раз, как Gateway). Dozzle читает то же, что `kubectl logs`; после удаления пода локально записи пропадают. В GKE копия остаётся в Cloud Logging. `install-local-logs.sh` ставит metrics-server: без Metrics API Dozzle падает (`failed to get pod metrics`), и UI пишет, что не смог подключиться к API.
+
+```bash
+./k8s/install-local-logs.sh
+```
+
+UI: http://logs.localhost. Логин и пароль скрипт печатает при первой установке (пользователь по умолчанию `admin`). Повторно из Secret `dozzle-users`:
+
+```bash
+kubectl -n logs get secret dozzle-users -o jsonpath='{.data.username}' | base64 --decode; echo
+kubectl -n logs get secret dozzle-users -o jsonpath='{.data.password}' | base64 --decode; echo
+```
+
+В терминале:
+
+```bash
+./k8s/logs.sh          # текущая ветка
+./k8s/logs.sh --all    # все namespace с label dating-app
+./k8s/logs.sh api      # только API
+```
+
+Снести окружение текущей ветки (не удаляет `gateway`, `envoy-gateway-system` и `logs`):
 
 ```bash
 ./k8s/destroy-local-kubernetes.sh
@@ -109,6 +132,7 @@ cp k8s/gke.env.example k8s/gke.env
 Скрипт напечатает IP Gateway. Пропишите `INGRESS_DOMAIN` в `k8s/gke.env` как `{ip}.sslip.io` (например `8.232.28.79.sslip.io`), не голый `sslip.io`. После этого:
 
 ```bash
+./k8s/install-gke-logs.sh
 ./k8s/deploy-gke-kubernetes.sh
 ```
 
@@ -131,7 +155,24 @@ URL: `http://{ветка}.{INGRESS_DOMAIN}` (ветка `main` → `http://main.
 
 Скрипт создаёт SA `github-actions`, выдаёт `roles/container.developer` и `roles/artifactregistry.writer`, пул/OIDC-провайдер GitHub и привязку к `origin` (`owner/repo`). В конце печатает ещё два значения: `GCP_WORKLOAD_IDENTITY_PROVIDER` и `GCP_SERVICE_ACCOUNT` — их тоже нужно добавить как secret или variable. Secret `GCP_SA_KEY` не нужен. Gateway должен уже стоять (`./k8s/install-gke-gateway.sh`). Если remote не GitHub, задайте `GITHUB_REPOSITORY=owner/repo`.
 
-Не удаляйте namespace `gateway`. Envoy Gateway в GKE не ставится — используется `GatewayClass` `gke-l7-global-external-managed`.
+Не удаляйте namespace `gateway` и `logs`. Envoy Gateway в GKE не ставится — используется `GatewayClass` `gke-l7-global-external-managed`.
+
+Логи в GKE — тот же Dozzle (живой хвост из kubelet) плюс Cloud Logging (GKE сам складывает stdout/stderr контейнеров):
+
+```bash
+./k8s/install-gke-logs.sh
+./k8s/logs.sh --cloud          # tail текущего namespace из Cloud Logging
+./k8s/logs.sh --cloud --all    # весь кластер
+```
+
+UI: `http://logs.{INGRESS_DOMAIN}`. Логин и пароль — те же, что печатает `install-gke-logs.sh`. Если вывод потерялся:
+
+```bash
+kubectl -n logs get secret dozzle-users -o jsonpath='{.data.username}' | base64 --decode; echo
+kubectl -n logs get secret dozzle-users -o jsonpath='{.data.password}' | base64 --decode; echo
+```
+
+Не открывайте Dozzle без пароля наружу: в логах может оказаться то, что приложение написало в stdout. Namespace `logs` скрипты сноса ветки не трогают.
 
 ## Полезные команды
 
@@ -143,10 +184,13 @@ URL: `http://{ветка}.{INGRESS_DOMAIN}` (ветка `main` → `http://main.
 | `npm run typecheck` | проверка типов (`tsc`) |
 | `npm run build` | сборка web + api |
 | `./k8s/install-local-gateway.sh` | один раз: Envoy Gateway в Docker Desktop |
+| `./k8s/install-local-logs.sh` | один раз: Dozzle, UI http://logs.localhost |
+| `./k8s/logs.sh` | хвост логов подов текущей ветки (`--all`, `--cloud`) |
 | `./k8s/deploy-local-kubernetes.sh` | окружение текущей ветки в локальный Kubernetes |
 | `./k8s/destroy-local-kubernetes.sh` | удалить namespace текущей ветки |
 | `./k8s/create-gke-artifact-registry.sh` | один раз: Artifact Registry `repository-1` и IAM |
 | `./k8s/create-gke-github-sa.sh` | один раз: SA GitHub Actions и Workload Identity Federation |
 | `./k8s/install-gke-gateway.sh` | один раз: Gateway в GKE |
+| `./k8s/install-gke-logs.sh` | один раз: Dozzle в GKE, UI `http://logs.{INGRESS_DOMAIN}` |
 | `./k8s/deploy-gke-kubernetes.sh` | окружение текущей ветки в GKE |
 | `./k8s/destroy-gke-kubernetes.sh` | удалить namespace текущей ветки в GKE |

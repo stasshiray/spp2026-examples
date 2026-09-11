@@ -65,7 +65,7 @@ gke_protect_namespace() {
     exit 1
   fi
   case "$ns" in
-    default | gateway | envoy-gateway-system)
+    default | gateway | envoy-gateway-system | logs)
       echo "Refusing to delete protected namespace: $ns" >&2
       exit 1
       ;;
