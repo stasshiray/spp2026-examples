@@ -5,7 +5,7 @@
 ## Как это устроено
 
 - `apps/web` — Next.js (App Router), в Docker собирается как `standalone`. Браузер ходит в API по `NEXT_PUBLIC_API_URL`. В Kubernetes URL пустой: запросы идут на тот же host (`/api/profiles`).
-- `apps/api` — Express + TypeScript + Drizzle. Отдаёт `/api/profiles`, `/api/health` и `GET /` (для проб балансировщика). При старте накатывает миграции и сидирует демо-профили.
+- `apps/api` — Express + TypeScript + Drizzle. Отдаёт `/api/profiles`, `/api/health`, `/api/ready` и `GET /` (для проб балансировщика). При старте накатывает миграции и сидирует демо-профили. По SIGTERM/SIGINT перестаёт быть ready, закрывает HTTP и пул Postgres.
 - `apps/web/Dockerfile` и `apps/api/Dockerfile` — отдельные образы, контекст сборки — корень репозитория (npm workspaces).
 - `k8s/manifests/` — Namespace, Postgres, API, web и Gateway API (`HTTPRoute`) для локального кластера и GKE.
 
@@ -76,6 +76,8 @@ docker compose up --build
 ```
 
 Первый скрипт — один раз (Envoy Gateway); повторный запуск безопасен. Второй поднимает окружение текущей ветки: namespace и URL `http://{ветка}.localhost` (ветка `main` → http://main.localhost).
+
+При остановке пода kubelet сразу снимает его с endpoints и запускает `preStop` (`sleep 5`), затем шлёт SIGTERM. API отвечает 503 на `/api/ready` (liveness `/api/health` остаётся 200), доживает in-flight запросы, закрывает пул и выходит до `terminationGracePeriodSeconds: 30`. У web тот же `preStop` и grace period; Next.js standalone сам закрывает HTTP по SIGTERM.
 
 Снести окружение текущей ветки (не удаляет `gateway` и `envoy-gateway-system`):
 

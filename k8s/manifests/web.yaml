@@ -33,6 +33,7 @@ spec:
         app: web
         app.kubernetes.io/part-of: lecture-1
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
         - name: web
           image: ${WEB_IMAGE}
@@ -53,6 +54,10 @@ spec:
               memory: 256Mi
             limits:
               memory: 256Mi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
           readinessProbe:
             httpGet:
               path: /

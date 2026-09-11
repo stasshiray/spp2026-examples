@@ -3,7 +3,11 @@ import express from "express";
 import type { Database } from "./db/client.js";
 import { profiles } from "./db/schema.js";
 
-export function createApp(db: Database) {
+export type AppOptions = {
+  isReady?: () => boolean;
+};
+
+export function createApp(db: Database, options: AppOptions = {}) {
   const app = express();
 
   app.use(cors({ origin: true }));
@@ -15,6 +19,15 @@ export function createApp(db: Database) {
 
   app.get("/", health);
   app.get("/api/health", health);
+
+  app.get("/api/ready", (_req, res) => {
+    if (options.isReady && !options.isReady()) {
+      res.status(503).json({ ok: false });
+      return;
+    }
+
+    res.json({ ok: true });
+  });
 
   app.get("/api/profiles", async (_req, res, next) => {
     try {

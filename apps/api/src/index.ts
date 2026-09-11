@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { createApp } from "./app.js";
 import { createDb, createPool } from "./db/client.js";
+import { createGracefulShutdown } from "./graceful-shutdown.js";
 import { runMigrations } from "./db/migrate.js";
 import { seedIfEmpty } from "./db/seed.js";
 
@@ -16,8 +17,10 @@ const db = createDb(pool);
 await runMigrations(db);
 await seedIfEmpty(db);
 
-const app = createApp(db);
+const shutdown = createGracefulShutdown(() => pool.end());
+const app = createApp(db, { isReady: shutdown.isReady });
 
-app.listen(port, "0.0.0.0", () => {
+const server = app.listen(port, "0.0.0.0", () => {
   console.log(`API listening on http://0.0.0.0:${port}`);
 });
+shutdown.register(server);

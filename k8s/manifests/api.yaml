@@ -33,6 +33,7 @@ spec:
         app: api
         app.kubernetes.io/part-of: lecture-1
     spec:
+      terminationGracePeriodSeconds: 30
       initContainers:
         - name: wait-for-postgres
           image: postgres:16-alpine
@@ -63,9 +64,13 @@ spec:
               memory: 256Mi
             limits:
               memory: 256Mi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
           readinessProbe:
             httpGet:
-              path: /api/health
+              path: /api/ready
               port: http
             initialDelaySeconds: 5
             periodSeconds: 5

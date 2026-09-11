@@ -43,6 +43,19 @@ describe("api", () => {
     expect(response.body).toEqual({ ok: true });
   });
 
+  it("returns ready status", async () => {
+    const response = await request(app).get("/api/ready");
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ ok: true });
+  });
+
+  it("returns 503 from /api/ready when shutting down", async () => {
+    const shuttingDown = createApp(db, { isReady: () => false });
+    const response = await request(shuttingDown).get("/api/ready");
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({ ok: false });
+  });
+
   it("returns demo profiles from postgres", async () => {
     const response = await request(app).get("/api/profiles");
     expect(response.status).toBe(200);
