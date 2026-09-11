@@ -1,6 +1,7 @@
-CREATE TABLE "books" (
+CREATE TABLE "profiles" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"title" text NOT NULL,
-	"author" text NOT NULL,
-	"year" integer NOT NULL
+	"name" text NOT NULL,
+	"age" integer NOT NULL,
+	"city" text NOT NULL,
+	"bio" text NOT NULL
 );

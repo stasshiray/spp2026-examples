@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Lecture 1 — Demo Library",
+  title: "Lecture 1 — Demo Dating",
   description: "Next.js + Express + PostgreSQL + Drizzle demo",
 };
 

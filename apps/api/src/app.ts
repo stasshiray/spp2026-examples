@@ -1,7 +1,7 @@
 import cors from "cors";
 import express from "express";
 import type { Database } from "./db/client.js";
-import { books } from "./db/schema.js";
+import { profiles } from "./db/schema.js";
 
 export function createApp(db: Database) {
   const app = express();
@@ -16,9 +16,9 @@ export function createApp(db: Database) {
   app.get("/", health);
   app.get("/api/health", health);
 
-  app.get("/api/books", async (_req, res, next) => {
+  app.get("/api/profiles", async (_req, res, next) => {
     try {
-      const rows = await db.select().from(books).orderBy(books.id);
+      const rows = await db.select().from(profiles).orderBy(profiles.id);
       res.json(rows);
     } catch (error) {
       next(error);

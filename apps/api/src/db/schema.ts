@@ -1,10 +1,11 @@
 import { integer, pgTable, serial, text } from "drizzle-orm/pg-core";
 
-export const books = pgTable("books", {
+export const profiles = pgTable("profiles", {
   id: serial("id").primaryKey(),
-  title: text("title").notNull(),
-  author: text("author").notNull(),
-  year: integer("year").notNull(),
+  name: text("name").notNull(),
+  age: integer("age").notNull(),
+  city: text("city").notNull(),
+  bio: text("bio").notNull(),
 });
 
-export type Book = typeof books.$inferSelect;
+export type Profile = typeof profiles.$inferSelect;

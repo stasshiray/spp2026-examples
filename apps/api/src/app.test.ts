@@ -43,16 +43,17 @@ describe("api", () => {
     expect(response.body).toEqual({ ok: true });
   });
 
-  it("returns demo books from postgres", async () => {
-    const response = await request(app).get("/api/books");
+  it("returns demo profiles from postgres", async () => {
+    const response = await request(app).get("/api/profiles");
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body)).toBe(true);
     expect(response.body.length).toBeGreaterThan(0);
     expect(response.body[0]).toEqual(
       expect.objectContaining({
-        title: expect.any(String),
-        author: expect.any(String),
-        year: expect.any(Number),
+        name: expect.any(String),
+        age: expect.any(Number),
+        city: expect.any(String),
+        bio: expect.any(String),
       }),
     );
   });

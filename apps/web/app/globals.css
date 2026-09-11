@@ -1,10 +1,12 @@
 :root {
-  --bg: #f4efe6;
-  --ink: #1c1915;
-  --muted: #6b6258;
-  --card: #fffdf8;
-  --line: #e4d8c4;
-  --accent: #8c2f1d;
+  --bg: #fff5f7;
+  --ink: #2b1520;
+  --muted: #8a6573;
+  --card: #ffffff;
+  --line: #f3d5de;
+  --accent: #e24b74;
+  --like: #e24b74;
+  --skip: #6b7280;
 }
 
 * {
@@ -18,15 +20,16 @@ body {
 }
 
 body {
-  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   background:
-    radial-gradient(circle at top right, #efe2c8 0, transparent 32%),
+    radial-gradient(circle at top right, #ffd6e2 0, transparent 36%),
+    radial-gradient(circle at bottom left, #ffe8d6 0, transparent 28%),
     var(--bg);
   color: var(--ink);
 }
 
 .page {
-  max-width: 880px;
+  max-width: 520px;
   margin: 0 auto;
   padding: 48px 24px 72px;
 }
@@ -37,7 +40,6 @@ body {
   font-size: 12px;
   color: var(--accent);
   margin: 0 0 8px;
-  font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
 h1 {
@@ -62,34 +64,68 @@ h1 {
   color: var(--accent);
 }
 
-.list {
+.done {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 24px;
+}
+
+.deck {
   display: grid;
-  gap: 12px;
 }
 
 .card {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 18px 20px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
+  border-radius: 24px;
+  padding: 28px 24px 24px;
+  box-shadow: 0 18px 40px rgba(226, 75, 116, 0.08);
 }
 
-.card h2 {
-  margin: 0;
-  font-size: 22px;
-}
-
-.card p {
-  margin: 0;
+.meta {
+  margin: 0 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
-.year {
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 13px;
-  color: var(--accent);
-  align-self: start;
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 32px;
+  line-height: 1.15;
+}
+
+.bio {
+  margin: 0 0 28px;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+button {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 16px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.skip {
+  background: #f3eef0;
+  color: var(--skip);
+}
+
+.like {
+  background: var(--like);
+  color: #fff;
 }

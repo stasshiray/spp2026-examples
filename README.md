@@ -4,8 +4,8 @@
 
 ## Как это устроено
 
-- `apps/web` — Next.js (App Router), в Docker собирается как `standalone`. Браузер ходит в API по `NEXT_PUBLIC_API_URL`. В Kubernetes URL пустой: запросы идут на тот же host (`/api/books`).
-- `apps/api` — Express + TypeScript + Drizzle. Отдаёт `/api/books`, `/api/health` и `GET /` (для проб балансировщика). При старте накатывает миграции и сидирует демо-книги.
+- `apps/web` — Next.js (App Router), в Docker собирается как `standalone`. Браузер ходит в API по `NEXT_PUBLIC_API_URL`. В Kubernetes URL пустой: запросы идут на тот же host (`/api/profiles`).
+- `apps/api` — Express + TypeScript + Drizzle. Отдаёт `/api/profiles`, `/api/health` и `GET /` (для проб балансировщика). При старте накатывает миграции и сидирует демо-профили.
 - `apps/web/Dockerfile` и `apps/api/Dockerfile` — отдельные образы, контекст сборки — корень репозитория (npm workspaces).
 - `k8s/manifests/` — Namespace, Postgres, API, web и Gateway API (`HTTPRoute`) для локального кластера и GKE.
 
@@ -21,9 +21,9 @@ npm run dev
 ```
 
 - фронт: http://localhost:3000
-- API: http://localhost:4000/api/books
+- API: http://localhost:4000/api/profiles
 
-Локальный Postgres в Compose слушает **5433**, чтобы не пересечься с другими контейнерами на 5432.
+Локальный Postgres в Compose слушает **5433**, чтобы не пересечься с другими контейнерами на 5432. Если база уже поднималась со старой схемой (`books`), пересоздайте том: `docker compose down -v`, затем снова `docker compose up db -d`.
 
 Линтер и тесты (тесты API ходят в Postgres):
 
