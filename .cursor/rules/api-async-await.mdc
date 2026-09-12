@@ -1,0 +1,29 @@
+---
+description: В API предпочитай async/await цепочкам Promise
+globs: apps/api/**/*.ts
+alwaysApply: false
+---
+
+# API: async/await вместо Promise
+
+Где функция может быть `async`, используй `await`, а не `.then()` / `.catch()` и не `void promise.catch(...)`.
+
+```typescript
+// ❌ BAD
+app.get("/metrics", (req, res, next) => {
+  void metricsHandler(req, res).catch(next);
+});
+
+// ✅ GOOD
+app.get("/metrics", async (req, res, next) => {
+  try {
+    await metricsHandler(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
+```
+
+В async-роутах Express ошибки через `try/catch` и `next(error)`, как в `http/profiles.ts`.
+
+Колбэки с сигнатурой `void` (сигналы, таймеры) тоже оборачивай в `async () => { await ... }`, а не в `.then()/.catch()`. Цепочку Promise оставляй только если API библиотеки иначе не вызывается.

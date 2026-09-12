@@ -1,0 +1,104 @@
+{
+  "displayName": "Dating App API",
+  "mosaicLayout": {
+    "columns": 48,
+    "tiles": [
+      {
+        "width": 24,
+        "height": 16,
+        "widget": {
+          "title": "Request rate",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "legendTemplate": "${namespace} ${route}",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (namespace, route) (rate(http_request_duration_seconds_count[1m]))"
+                }
+              }
+            ],
+            "yAxis": { "label": "req/s", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 24,
+        "width": 24,
+        "height": 16,
+        "widget": {
+          "title": "Latency p50 / p95",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "legendTemplate": "p50 ${namespace} ${route}",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "histogram_quantile(0.50, sum by (le, namespace, route) (rate(http_request_duration_seconds_bucket[5m])))"
+                }
+              },
+              {
+                "plotType": "LINE",
+                "legendTemplate": "p95 ${namespace} ${route}",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "histogram_quantile(0.95, sum by (le, namespace, route) (rate(http_request_duration_seconds_bucket[5m])))"
+                }
+              }
+            ],
+            "yAxis": { "label": "seconds", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "yPos": 16,
+        "width": 24,
+        "height": 16,
+        "widget": {
+          "title": "5xx error rate",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "legendTemplate": "${namespace} ${route} ${status_code}",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (namespace, route, status_code) (rate(http_request_duration_seconds_count{status_code=~\"5..\"}[1m]))"
+                }
+              }
+            ],
+            "yAxis": { "label": "req/s", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 24,
+        "yPos": 16,
+        "width": 24,
+        "height": 16,
+        "widget": {
+          "title": "Node.js heap used",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "legendTemplate": "${namespace} ${pod}",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "nodejs_heap_size_used_bytes"
+                }
+              }
+            ],
+            "yAxis": { "label": "bytes", "scale": "LINEAR" }
+          }
+        }
+      }
+    ]
+  }
+}

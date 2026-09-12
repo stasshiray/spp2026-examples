@@ -71,6 +71,21 @@ describe("api", () => {
     expect(response.body).toEqual({ ok: false });
   });
 
+  it("returns prometheus text from /metrics", async () => {
+    const response = await request(app).get("/metrics");
+    expect(response.status).toBe(200);
+    expect(response.headers["content-type"]).toMatch(/text\/plain|openmetrics/);
+    expect(response.text).toContain("# HELP");
+  });
+
+  it("records http_request_duration_seconds for /api/profiles", async () => {
+    await request(app).get("/api/profiles").expect(200);
+    const response = await request(app).get("/metrics");
+    expect(response.status).toBe(200);
+    expect(response.text).toContain("http_request_duration_seconds");
+    expect(response.text).toContain('route="/api/profiles"');
+  });
+
   it("returns demo profiles from postgres", async () => {
     const response = await request(app).get("/api/profiles");
     expect(response.status).toBe(200);

@@ -41,3 +41,4 @@ kubectl -n "$NAMESPACE" rollout status deployment/api --timeout=5m
 kubectl -n "$NAMESPACE" rollout status deployment/web --timeout=5m
 
 echo "URL: http://${INGRESS_HOST}"
+echo "Metrics: http://${INGRESS_HOST}/metrics"

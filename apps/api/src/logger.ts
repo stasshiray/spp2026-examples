@@ -4,7 +4,12 @@ import type { NextFunction, Request, Response } from "express";
 import pino from "pino";
 import { pinoHttp } from "pino-http";
 
-const PROBE_PATHS = new Set(["/", "/api/health", "/api/ready"]);
+export const PROBE_PATHS = new Set([
+  "/",
+  "/api/health",
+  "/api/ready",
+  "/metrics",
+]);
 
 export const REQUEST_ID_HEADER = "x-request-id";
 

@@ -6,6 +6,11 @@ import { createErrorHandler } from "./http/error-handler";
 import { createHealthRouter } from "./http/health";
 import { createProfilesRouter } from "./http/profiles";
 import { bindRequestContext, logger, requestLogger } from "./logger";
+import {
+  ensureDefaultMetrics,
+  metricsHandler,
+  metricsMiddleware,
+} from "./metrics";
 import { createProfileRepo } from "./repos/profile-repo";
 import { createProfileService } from "./services/profile-service";
 
@@ -17,14 +22,23 @@ export type AppOptions = {
 export function createApp(db: Database, options: AppOptions = {}) {
   const log = options.logger ?? logger;
   const profileService = createProfileService(createProfileRepo(db), log);
+  ensureDefaultMetrics();
 
   const app = express();
 
   app.use(bindRequestContext);
   app.use(requestLogger(log));
+  app.use(metricsMiddleware);
   app.use(cors({ origin: true }));
   app.use(express.json());
 
+  app.get("/metrics", async (req, res, next) => {
+    try {
+      await metricsHandler(req, res);
+    } catch (error) {
+      next(error);
+    }
+  });
   app.use(createHealthRouter({ isReady: options.isReady }));
   app.use("/api/profiles", createProfilesRouter(profileService));
   app.use(createErrorHandler(log));

@@ -5,10 +5,11 @@
 ## Как это устроено
 
 - `apps/web` — Next.js (App Router), в Docker собирается как `standalone`. Браузер ходит в API по `NEXT_PUBLIC_API_URL`. В Kubernetes URL пустой: запросы идут на тот же host (`/api/profiles`).
-- `apps/api` — Express + TypeScript + Drizzle. Отдаёт `/api/profiles`, `/api/health`, `/api/ready` и `GET /` (для проб балансировщика). При старте накатывает миграции и сидирует демо-профили. По SIGTERM/SIGINT перестаёт быть ready, закрывает HTTP и пул Postgres.
+- `apps/api` — Express + TypeScript + Drizzle. Отдаёт `/api/profiles`, `/api/health`, `/api/ready`, `GET /metrics` (Prometheus) и `GET /` (для проб балансировщика). При старте накатывает миграции и сидирует демо-профили. По SIGTERM/SIGINT перестаёт быть ready, закрывает HTTP и пул Postgres.
 - `apps/web/Dockerfile` и `apps/api/Dockerfile` — отдельные образы, контекст сборки — корень репозитория (npm workspaces).
 - `k8s/manifests/` — Namespace, Postgres (вместе с ConfigMap `dating-app-config`), API, web и Gateway API (`HTTPRoute`) для локального кластера и GKE. Пароль БД не в git: скрипт деплоя создаёт Secret `dating-app-db` в namespace ветки. Порт Postgres — в ConfigMap (`POSTGRES_PORT`, по умолчанию `5432`); под читает его через `envFrom`.
 - Логи: Dozzle в namespace `logs` (`k8s/manifests/cluster/dozzle.yaml`) — живой просмотр stdout/stderr всех подов, тот же UI локально и в GKE. В GKE контейнерные логи дополнительно пишутся в Cloud Logging.
+- Метрики API: `GET /metrics` (Prometheus). С хоста: `http://{ветка}.localhost/metrics` локально и `http://{ветка}.{INGRESS_DOMAIN}/metrics` в GKE (HTTPRoute Exact `/metrics` → api). Grafana — `http://metrics.localhost`. В GKE ещё Google Managed Prometheus и дашборд в Cloud Monitoring.
 
 ## Локальный запуск
 
@@ -78,10 +79,11 @@ docker compose up --build
 ```bash
 ./k8s/install-local-gateway.sh
 ./k8s/install-local-logs.sh
+./k8s/install-local-metrics.sh
 ./k8s/deploy-local-kubernetes.sh
 ```
 
-Первые два скрипта — один раз (Envoy Gateway и Dozzle); повторный запуск безопасен. Второй поднимает окружение текущей ветки: namespace и URL `http://{ветка}.localhost` (ветка `main` → http://main.localhost). При первом деплое создаётся Secret `dating-app-db` со случайным паролем Postgres; повторный деплой его не трогает. Задать свой: `POSTGRES_PASSWORD=...` (URL-safe: буквы, цифры, `.` `_` `~` `-`). Порт БД — ConfigMap `dating-app-config` (`POSTGRES_PORT=5432` по умолчанию). Смена порта на уже существующем namespace не обновит `DATABASE_URL` в Secret: снесите namespace. Снос namespace удаляет Secret, ConfigMap и PVC.
+Первые три скрипта — один раз (Envoy Gateway, Dozzle и Grafana); повторный запуск безопасен. Четвёртый поднимает окружение текущей ветки: namespace и URL `http://{ветка}.localhost` (ветка `main` → http://main.localhost). При первом деплое создаётся Secret `dating-app-db` со случайным паролем Postgres; повторный деплой его не трогает. Задать свой: `POSTGRES_PASSWORD=...` (URL-safe: буквы, цифры, `.` `_` `~` `-`). Порт БД — ConfigMap `dating-app-config` (`POSTGRES_PORT=5432` по умолчанию). Смена порта на уже существующем namespace не обновит `DATABASE_URL` в Secret: снесите namespace. Снос namespace удаляет Secret, ConfigMap и PVC.
 
 При остановке пода kubelet сразу снимает его с endpoints и запускает `preStop` (`sleep 5`), затем шлёт SIGTERM. API отвечает 503 на `/api/ready` (liveness `/api/health` остаётся 200), доживает in-flight запросы, закрывает пул и выходит до `terminationGracePeriodSeconds: 30`. У web тот же `preStop` и grace period; Next.js standalone сам закрывает HTTP по SIGTERM.
 
@@ -106,7 +108,20 @@ kubectl -n logs get secret dozzle-users -o jsonpath='{.data.password}' | base64 
 ./k8s/logs.sh api      # только API
 ```
 
-Снести окружение текущей ветки (не удаляет `gateway`, `envoy-gateway-system` и `logs`):
+Метрики API (один раз, как Gateway и Dozzle). Prometheus скрейпит поды с аннотацией `prometheus.io/scrape`; Grafana — UI. История на `emptyDir` (~6 часов), после рестарта пода пропадает.
+
+```bash
+./k8s/install-local-metrics.sh
+```
+
+UI: http://metrics.localhost. Логин и пароль скрипт печатает при первой установке (пользователь по умолчанию `admin`). Повторно из Secret `grafana-admin`:
+
+```bash
+kubectl -n metrics get secret grafana-admin -o jsonpath='{.data.username}' | base64 --decode; echo
+kubectl -n metrics get secret grafana-admin -o jsonpath='{.data.password}' | base64 --decode; echo
+```
+
+Снести окружение текущей ветки (не удаляет `gateway`, `envoy-gateway-system`, `logs` и `metrics`):
 
 ```bash
 ./k8s/destroy-local-kubernetes.sh
@@ -133,16 +148,25 @@ cp k8s/gke.env.example k8s/gke.env
 
 ```bash
 ./k8s/install-gke-logs.sh
+./k8s/install-gke-metrics.sh
 ./k8s/deploy-gke-kubernetes.sh
 ```
 
 Сборка идёт под `linux/amd64` (ноды GKE). С Mac без этого флага в реестр попадает `arm64`, и поды падают с `ImagePullBackOff` / `no match for platform in manifest`. Тот же Secret `dating-app-db`, что и локально: первый деплой namespace генерирует пароль (или берёт `POSTGRES_PASSWORD` из `gke.env` / окружения).
 
-URL: `http://{ветка}.{INGRESS_DOMAIN}` (ветка `main` → `http://main.{ip}.sslip.io`). Gateway слушает только HTTP `:80`; `https://` даёт обрыв TLS («filter aborted» / `SSL_ERROR_SYSCALL`). Снести окружение текущей ветки:
+URL: `http://{ветка}.{INGRESS_DOMAIN}` (ветка `main` → `http://main.{ip}.sslip.io`). Gateway слушает только HTTP `:80`; `https://` даёт обрыв TLS («filter aborted» / `SSL_ERROR_SYSCALL`). Снести окружение текущей ветки (кластер, Gateway/LB и образы остаются и **продолжают тарифицироваться**):
 
 ```bash
 ./k8s/destroy-gke-kubernetes.sh
 ```
+
+Снести **всё**, что этот репозиторий поставил в кластер, **кроме самого кластера**: namespace `dating-app` (ветки, `gateway`, `logs`), Gateway/LB, `ClusterPodMonitoring`, дашборд Cloud Monitoring и репозиторий Artifact Registry. Ноды кластера продолжают тарифицироваться; SA GitHub и Workload Identity не удаляются.
+
+```bash
+./k8s/teardown-gke.sh
+```
+
+Скрипт просит ввести имя кластера (`GKE_CLUSTER`). Без подтверждения: `./k8s/teardown-gke.sh --yes`. Образы оставить: `--keep-registry`. Поднять снова: `create-gke-artifact-registry.sh` (если реестр снесли) → `install-gke-gateway.sh` → logs/metrics → deploy. Проект GCP и кластер не удаляются.
 
 Тот же деплой/снос можно запустить из GitHub Actions с любой ветки (`workflow_dispatch`). Один раз в репозитории:
 
@@ -155,7 +179,7 @@ URL: `http://{ветка}.{INGRESS_DOMAIN}` (ветка `main` → `http://main.
 
 Скрипт создаёт SA `github-actions`, выдаёт `roles/container.developer` и `roles/artifactregistry.writer`, пул/OIDC-провайдер GitHub и привязку к `origin` (`owner/repo`). В конце печатает ещё два значения: `GCP_WORKLOAD_IDENTITY_PROVIDER` и `GCP_SERVICE_ACCOUNT` — их тоже нужно добавить как secret или variable. Secret `GCP_SA_KEY` не нужен. Gateway должен уже стоять (`./k8s/install-gke-gateway.sh`). Если remote не GitHub, задайте `GITHUB_REPOSITORY=owner/repo`.
 
-Не удаляйте namespace `gateway` и `logs`. Envoy Gateway в GKE не ставится — используется `GatewayClass` `gke-l7-global-external-managed`.
+Не удаляйте namespace `gateway` и `logs`. Envoy Gateway в GKE не ставится — используется `GatewayClass` `gke-l7-global-external-managed`. `install-gke-metrics.sh` не создаёт namespace `metrics`: в GKE нет Grafana, только Managed Prometheus и Cloud Monitoring.
 
 Логи в GKE — тот же Dozzle (живой хвост из kubelet) плюс Cloud Logging (GKE сам складывает stdout/stderr контейнеров):
 
@@ -174,6 +198,20 @@ kubectl -n logs get secret dozzle-users -o jsonpath='{.data.password}' | base64 
 
 Не открывайте Dozzle без пароля наружу: в логах может оказаться то, что приложение написало в stdout. Namespace `logs` скрипты сноса ветки не трогают.
 
+Метрики API в GKE — Google Managed Prometheus (скрейп `/metrics` по всем namespace веток) и дашборд в Cloud Monitoring. CPU/RAM контейнеров GKE и так пишет как `kubernetes.io/container/*`; этот скрипт добавляет только прикладные RED-метрики. Кастомные метрики GMP **биллингуются**; для учебного трафика это копейки.
+
+```bash
+./k8s/install-gke-metrics.sh
+```
+
+Скрипт включает managed collection, если она выключена, применяет `ClusterPodMonitoring` `dating-app-api` и создаёт (или обновляет) дашборд **Dating App API**. Ссылки на дашборд и Metrics Explorer печатаются в конце. Пример PromQL:
+
+```text
+sum by (namespace, route) (rate(http_request_duration_seconds_count[1m]))
+```
+
+Фильтр `namespace` — имя ветки. `ClusterPodMonitoring` кластерный: снос namespace ветки его не удаляет.
+
 ## Полезные команды
 
 | Команда | Назначение |
@@ -185,6 +223,7 @@ kubectl -n logs get secret dozzle-users -o jsonpath='{.data.password}' | base64 
 | `npm run build` | сборка web + api |
 | `./k8s/install-local-gateway.sh` | один раз: Envoy Gateway в Docker Desktop |
 | `./k8s/install-local-logs.sh` | один раз: Dozzle, UI http://logs.localhost |
+| `./k8s/install-local-metrics.sh` | один раз: Prometheus + Grafana, UI http://metrics.localhost |
 | `./k8s/logs.sh` | хвост логов подов текущей ветки (`--all`, `--cloud`) |
 | `./k8s/deploy-local-kubernetes.sh` | окружение текущей ветки в локальный Kubernetes |
 | `./k8s/destroy-local-kubernetes.sh` | удалить namespace текущей ветки |
@@ -192,5 +231,7 @@ kubectl -n logs get secret dozzle-users -o jsonpath='{.data.password}' | base64 
 | `./k8s/create-gke-github-sa.sh` | один раз: SA GitHub Actions и Workload Identity Federation |
 | `./k8s/install-gke-gateway.sh` | один раз: Gateway в GKE |
 | `./k8s/install-gke-logs.sh` | один раз: Dozzle в GKE, UI `http://logs.{INGRESS_DOMAIN}` |
+| `./k8s/install-gke-metrics.sh` | один раз: Managed Prometheus + дашборд Cloud Monitoring |
 | `./k8s/deploy-gke-kubernetes.sh` | окружение текущей ветки в GKE |
 | `./k8s/destroy-gke-kubernetes.sh` | удалить namespace текущей ветки в GKE |
+| `./k8s/teardown-gke.sh` | снести приложения, Gateway/LB и образы; кластер оставить |

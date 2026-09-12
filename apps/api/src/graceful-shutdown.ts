@@ -43,11 +43,11 @@ export function createGracefulShutdown(
     }
   }
 
-  process.on("SIGTERM", () => {
-    void shutdown("SIGTERM");
+  process.on("SIGTERM", async () => {
+    await shutdown("SIGTERM");
   });
-  process.on("SIGINT", () => {
-    void shutdown("SIGINT");
+  process.on("SIGINT", async () => {
+    await shutdown("SIGINT");
   });
 
   return {

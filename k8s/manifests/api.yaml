@@ -32,6 +32,10 @@ spec:
       labels:
         app: api
         app.kubernetes.io/part-of: dating-app
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "4000"
+        prometheus.io/path: "/metrics"
     spec:
       terminationGracePeriodSeconds: 30
       initContainers:

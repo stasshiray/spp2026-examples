@@ -1,0 +1,15 @@
+apiVersion: monitoring.googleapis.com/v1
+kind: ClusterPodMonitoring
+metadata:
+  name: dating-app-api
+  labels:
+    app: api
+    app.kubernetes.io/part-of: dating-app
+spec:
+  selector:
+    matchLabels:
+      app: api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
