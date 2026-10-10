@@ -12,12 +12,17 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "start": "concurrently -n api,web -c blue,green \"npm run start -w api\" \"npm run start -w web\"",
     "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "npm run test --workspaces --if-present",
     "db:generate": "npm run db:generate -w api",
-    "db:migrate": "npm run db:migrate -w api"
+    "db:migrate": "npm run db:migrate -w api",
+    "db:reset": "npm run db:reset -w api"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.9"
   },
   "engines": {
     "node": ">=20"

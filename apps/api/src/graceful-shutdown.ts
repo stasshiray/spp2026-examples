@@ -34,6 +34,7 @@ export function createGracefulShutdown(
       if (server) {
         await promisify(server.close.bind(server))();
       }
+
       await close();
       logger.info({ signal }, "shutdown complete");
       process.exit(0);

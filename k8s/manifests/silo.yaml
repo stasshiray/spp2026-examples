@@ -1,0 +1,145 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: silo
+  namespace: ${NAMESPACE}
+  labels:
+    app: silo
+    app.kubernetes.io/part-of: dating-app
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: silo
+  namespace: ${NAMESPACE}
+  labels:
+    app: silo
+    app.kubernetes.io/part-of: dating-app
+spec:
+  selector:
+    app: silo
+  ports:
+    - name: api
+      port: 9000
+      targetPort: api
+    - name: console
+      port: 9001
+      targetPort: console
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: silo
+  namespace: ${NAMESPACE}
+  labels:
+    app: silo
+    app.kubernetes.io/part-of: dating-app
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: silo
+  template:
+    metadata:
+      labels:
+        app: silo
+        app.kubernetes.io/part-of: dating-app
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: silo
+          image: pgsty/silo
+          imagePullPolicy: IfNotPresent
+          args: ["server", "/data", "--console-address", ":9001"]
+          ports:
+            - containerPort: 9000
+              name: api
+            - containerPort: 9001
+              name: console
+          env:
+            - name: MINIO_ROOT_USER
+              value: minio
+            - name: MINIO_ROOT_PASSWORD
+              value: minioadmin
+            - name: MINIO_API_CORS_ALLOW_ORIGIN
+              value: "*"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: api
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: api
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: silo
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: silo
+  namespace: ${NAMESPACE}
+  labels:
+    app.kubernetes.io/part-of: dating-app
+spec:
+  parentRefs:
+    - name: main-envoy-gateway
+      namespace: gateway
+      sectionName: http
+  hostnames:
+    - "silo.${INGRESS_HOST}"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: silo
+          port: 9000
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: silo-console
+  namespace: ${NAMESPACE}
+  labels:
+    app.kubernetes.io/part-of: dating-app
+spec:
+  parentRefs:
+    - name: main-envoy-gateway
+      namespace: gateway
+      sectionName: http
+  hostnames:
+    - "silo-console.${INGRESS_HOST}"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: silo
+          port: 9001

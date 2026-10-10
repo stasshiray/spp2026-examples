@@ -24,8 +24,6 @@ services:
     autoDeployTrigger: checksPass
     healthCheckPath: /
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: NEXT_PUBLIC_API_URL
         fromService:
           type: web

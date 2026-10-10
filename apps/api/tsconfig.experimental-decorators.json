@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "experimentalDecorators": true
+  },
+  "include": [
+    "src/services/decorators/timed-legacy.ts",
+    "src/services/decorators/timed-legacy.usage.ts"
+  ],
+  "exclude": []
+}

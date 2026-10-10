@@ -35,7 +35,7 @@ app.get("/api/profiles", async (_req, res, next) => {
 
 - Строгий TypeScript: без `any`, публичные типы из domain/schema (`Profile`), не «сырой» row из роута.
 - Зависимости внутрь через аргументы (`createApp(db)` / `createProfileService(repo)`), не через синглтон БД.
-- Ошибки: `next(error)` в async-роутах, один error middleware, клиенту без стека.
+- Ошибки: сервис бросает доменную ошибку без статуса, `next(error)` в async-роутах, один error middleware в `src/http` ставит статус. Клиенту без стека.
 - Логи: JSON (`pino`), `requestId` из контекста запроса, не логировать секреты и `DATABASE_URL`.
 - Схема — источник правды; миграции только через Drizzle Kit, не править SQL вручную в обход `db:generate`.
 - Новые фичи — новый service/repo (или метод), не раздувать `app.ts`.

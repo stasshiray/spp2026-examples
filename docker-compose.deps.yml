@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dating-app-db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dating-app-db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    # minio/minio ушёл с Docker Hub; Silo — тот же S3 API и команда server /data.
+    image: pgsty/silo
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_API_CORS_ALLOW_ORIGIN: "*"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio:/data
+
+volumes:
+  pgdata:
+  minio:

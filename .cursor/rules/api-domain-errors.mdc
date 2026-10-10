@@ -1,0 +1,34 @@
+---
+description: Ошибки предметной области не знают HTTP-статусов, их отображает слой http
+globs: apps/api/**/*.ts
+alwaysApply: false
+---
+
+# API: статус только в http
+
+Сервис и репозиторий бросают ошибку предметной области без кода ответа. Числа `400`, `401`, `404`, `409`, `429` живут в `src/http`.
+
+Ошибка несёт доменный код ситуации, не статус. Один middleware смотрит на класс или код и сам выбирает статус и тело. Роут этого не делает.
+
+```typescript
+// ❌ BAD — сервис знает про HTTP
+throw new MatchingError("Некорректный возраст", 400);
+
+// ✅ GOOD
+throw new MatchingError("invalid_age");
+```
+
+```typescript
+// src/http/error-handler.ts
+const statusByCode = {
+  invalid_age: 400,
+  profile_missing: 404,
+} as const;
+
+if (error instanceof MatchingError) {
+  res.status(statusByCode[error.code]).json({ error: error.message });
+  return;
+}
+```
+
+`HttpError` со полем `status` сервисы не бросают и от него не наследуются.

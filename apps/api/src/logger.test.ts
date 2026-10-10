@@ -10,6 +10,7 @@ function collectLogs() {
       callback();
     },
   });
+
   return { dest, lines };
 }
 

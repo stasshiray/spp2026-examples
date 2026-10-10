@@ -27,18 +27,23 @@ fi
 export API_IMAGE="dating-app-api:${image_tag}"
 export WEB_IMAGE="dating-app-web:${image_tag}"
 export INGRESS_HOST="${NAMESPACE}.localhost"
+export S3_ENDPOINT="http://silo:9000"
+export S3_PUBLIC_ENDPOINT="http://silo.${INGRESS_HOST}"
 ensure_postgres_port
 
 gke_apply_manifest "$manifests"/namespace.yaml
 ensure_dating_app_db_secret "$NAMESPACE"
 
-for manifest in "$manifests"/postgres.yaml "$manifests"/api.yaml "$manifests"/web.yaml "$manifests"/httproute.yaml; do
+for manifest in "$manifests"/silo.yaml "$manifests"/postgres.yaml "$manifests"/api.yaml "$manifests"/web.yaml "$manifests"/httproute.yaml; do
   gke_apply_manifest "$manifest"
 done
 
+kubectl -n "$NAMESPACE" rollout status deployment/silo --timeout=5m
 kubectl -n "$NAMESPACE" rollout status deployment/postgres --timeout=5m
 kubectl -n "$NAMESPACE" rollout status deployment/api --timeout=5m
 kubectl -n "$NAMESPACE" rollout status deployment/web --timeout=5m
 
 echo "URL: http://${INGRESS_HOST}"
 echo "Metrics: http://${INGRESS_HOST}/metrics"
+echo "Silo S3: http://silo.${INGRESS_HOST}"
+echo "Silo console: http://silo-console.${INGRESS_HOST}"

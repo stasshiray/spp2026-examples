@@ -86,7 +86,7 @@ ensure_postgres_port() {
 }
 
 gke_apply_manifest() {
-  envsubst '${API_IMAGE} ${WEB_IMAGE} ${INGRESS_HOST} ${NAMESPACE} ${POSTGRES_PORT}' < "$1" | kubectl apply -f -
+  envsubst '${API_IMAGE} ${WEB_IMAGE} ${INGRESS_HOST} ${NAMESPACE} ${POSTGRES_PORT} ${S3_ENDPOINT} ${S3_PUBLIC_ENDPOINT}' < "$1" | kubectl apply -f -
 }
 
 # Postgres user/db match probes and the API init container. Only the password varies.

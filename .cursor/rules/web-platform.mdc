@@ -1,0 +1,25 @@
+---
+description: React SPA — клиентский рендер и без дублирования внутри web
+globs: apps/web/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Web: SPA без SSR и один источник правды
+
+`apps/web` — клиентское приложение на Vite и React Router. Сервер отдаёт только статику; страницы рисует браузер. Одинаковый запрос, разбор ошибки или кусок UI живёт в одном модуле этого приложения.
+
+- Не рендери страницы на сервере и не добавляй SSR, SSG или серверные компоненты.
+- Маршруты — в `src/App.tsx`. Интерактив и данные — в компонентах.
+- Все `fetch` к API — через `lib/api`. Компонент не парсит HTTP-ошибки сам.
+- Повторяющееся состояние — хук. Повторяющаяся форма или карточка — компонент.
+- Тип ответа API объявляй один раз рядом с клиентом.
+
+```tsx
+// ❌ BAD — fetch и разбор ошибки в компоненте
+const response = await fetch(meApiPath(), { headers: bearerHeaders(token) });
+const payload: unknown = await response.json();
+if (!response.ok) throw new Error(errorMessage(payload, response.status));
+
+// ✅ GOOD
+const viewer = await fetchViewer(token);
+```

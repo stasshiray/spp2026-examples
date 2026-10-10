@@ -1,16 +1,15 @@
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { FlatCompat } from "@eslint/eslintrc";
+import js from "@eslint/js";
+import eslintConfigPrettier from "eslint-config-prettier/flat";
+import reactHooks from "eslint-plugin-react-hooks";
+import tseslint from "typescript-eslint";
 
-const compat = new FlatCompat({
-  baseDirectory: dirname(fileURLToPath(import.meta.url)),
-});
-
-const eslintConfig = [
+export default tseslint.config(
   {
-    ignores: [".next/**", "node_modules/**", "out/**", "next-env.d.ts"],
+    ignores: ["dist/**", "node_modules/**", ".next/**"],
   },
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  reactHooks.configs["recommended-latest"],
   {
     rules: {
       "no-unused-vars": "off",
@@ -22,8 +21,13 @@ const eslintConfig = [
           caughtErrorsIgnorePattern: "^_",
         },
       ],
+      "padding-line-between-statements": [
+        "error",
+        { blankLine: "always", prev: "*", next: "return" },
+        { blankLine: "always", prev: ["const", "let", "var"], next: "if" },
+        { blankLine: "always", prev: ["block-like", "function", "class"], next: "*" },
+      ],
     },
   },
-];
-
-export default eslintConfig;
+  eslintConfigPrettier,
+);

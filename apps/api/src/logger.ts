@@ -4,12 +4,7 @@ import type { NextFunction, Request, Response } from "express";
 import pino from "pino";
 import { pinoHttp } from "pino-http";
 
-export const PROBE_PATHS = new Set([
-  "/",
-  "/api/health",
-  "/api/ready",
-  "/metrics",
-]);
+export const PROBE_PATHS = new Set(["/", "/api/health", "/api/ready", "/metrics"]);
 
 export const REQUEST_ID_HEADER = "x-request-id";
 
@@ -42,17 +37,15 @@ export const logger = createLogger();
 export function requestIdFrom(req: Request): string {
   const header = req.headers[REQUEST_ID_HEADER];
   const incoming = Array.isArray(header) ? header[0] : header;
+
   if (incoming && incoming.trim()) {
     return incoming.trim();
   }
+
   return randomUUID();
 }
 
-export function bindRequestContext(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
+export function bindRequestContext(req: Request, res: Response, next: NextFunction) {
   const requestId = requestIdFrom(req);
   res.setHeader(REQUEST_ID_HEADER, requestId);
   requestContext.run({ requestId }, next);
@@ -61,8 +54,7 @@ export function bindRequestContext(
 export function requestLogger(log = logger) {
   return pinoHttp({
     logger: log,
-    genReqId: (req) =>
-      requestContext.getStore()?.requestId ?? requestIdFrom(req as Request),
+    genReqId: (req) => requestContext.getStore()?.requestId ?? requestIdFrom(req as Request),
     customAttributeKeys: {
       reqId: "requestId",
     },
@@ -81,9 +73,11 @@ export function requestLogger(log = logger) {
       if (err || res.statusCode >= 500) {
         return "error";
       }
+
       if (res.statusCode >= 400) {
         return "warn";
       }
+
       return "info";
     },
   });

@@ -1,0 +1,418 @@
+:root {
+  --bg: #fff5f7;
+  --ink: #2b1520;
+  --muted: #8a6573;
+  --card: #ffffff;
+  --line: #f3d5de;
+  --accent: #e24b74;
+  --like: #e24b74;
+  --skip: #6b7280;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  background:
+    radial-gradient(circle at top right, #ffd6e2 0, transparent 36%),
+    radial-gradient(circle at bottom left, #ffe8d6 0, transparent 28%), var(--bg);
+  color: var(--ink);
+}
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 28px 24px 72px;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 18px;
+}
+
+.nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+.nav-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+
+.nav-links a.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.nav-spacer {
+  flex: 1;
+}
+
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-user span {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.kicker {
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: var(--accent);
+  margin: 0 0 8px;
+}
+
+h1 {
+  margin: 0 0 12px;
+  font-size: 42px;
+  line-height: 1.1;
+}
+
+.lead {
+  margin: 0 0 36px;
+  color: var(--muted);
+  max-width: 46ch;
+  font-size: 18px;
+}
+
+.status {
+  padding: 18px 0;
+  color: var(--muted);
+}
+
+.error {
+  color: var(--accent);
+}
+
+.done {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 24px;
+}
+
+.deck {
+  display: grid;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 28px 24px 24px;
+  box-shadow: 0 18px 40px rgba(226, 75, 116, 0.08);
+}
+
+.meta {
+  margin: 0 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 32px;
+  line-height: 1.15;
+}
+
+.bio {
+  margin: 0 0 28px;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.viewer,
+.login {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.session {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.session p {
+  margin: 0;
+}
+
+.logout {
+  background: #f3eef0;
+  color: var(--skip);
+}
+
+.note {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  margin: 20px 0 0;
+}
+
+.note span {
+  letter-spacing: 0.02em;
+}
+
+.viewer span,
+.login span,
+.note span {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.viewer select,
+.login input {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.note input {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.score {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.outcome {
+  margin: 0 0 16px;
+  font-weight: 600;
+}
+
+.outcome.matched {
+  color: var(--accent);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+button,
+.link-button {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 16px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+}
+
+.skip {
+  background: #f3eef0;
+  color: var(--skip);
+}
+
+.like {
+  background: var(--like);
+  color: #fff;
+}
+
+.superlike {
+  background: #fff;
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.tabs button {
+  background: transparent;
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1px var(--line);
+  padding: 8px 14px;
+}
+
+.tabs button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.filters,
+.stack,
+.safety {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.filters {
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+}
+
+.filters label,
+.note,
+.check {
+  display: grid;
+  gap: 4px;
+}
+
+.filters input,
+.note input,
+.note textarea,
+.login input {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.note textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.reasons li {
+  background: #fff0f4;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.undo {
+  margin-bottom: 16px;
+}
+
+.actions.two {
+  grid-template-columns: 1fr 1fr;
+  margin-top: 12px;
+}
+
+.row,
+.check {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.thread {
+  display: grid;
+  gap: 8px;
+}
+
+.bubble {
+  justify-self: start;
+  max-width: 80%;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+
+.bubble.mine {
+  justify-self: end;
+  background: #ffe3eb;
+}
+
+.tick {
+  margin-left: 8px;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.photos {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.photos img {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 16px;
+}
+
+@media (max-width: 640px) {
+  .filters,
+  .actions,
+  .actions.two {
+    grid-template-columns: 1fr;
+  }
+}

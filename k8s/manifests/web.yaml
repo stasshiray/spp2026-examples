@@ -41,13 +41,6 @@ spec:
           ports:
             - containerPort: 3000
               name: http
-          env:
-            - name: NODE_ENV
-              value: production
-            - name: PORT
-              value: "3000"
-            - name: HOSTNAME
-              value: "0.0.0.0"
           resources:
             requests:
               cpu: 100m

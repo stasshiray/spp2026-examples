@@ -1,0 +1,38 @@
+---
+description: Express и Node — практики платформы и без дублирования внутри API
+globs: apps/api/**/*.ts
+alwaysApply: false
+---
+
+# API: практики Express и один источник правды
+
+Пиши `apps/api` идиомами Express. Одинаковый разбор входа, маппинг и ответ об ошибке не копируй между роутами и сервисами.
+
+- Роут тонкий: `asyncRoute`, вызов сервиса, `res.json`. Сервис бросает ошибку без HTTP-статуса. Один error middleware в `src/http` переводит её в статус, не каждый роут.
+- Общий разбор `unknown` (`isRecord`) и проекция профиля (`toProfileCard`) — по одному модулю.
+- Одинаковые ветки сценария (лайк и суперлайк с одним исходом) — одна функция на оба ключа.
+- Проверка Bearer — `requireBearerToken`. Она бросает `AuthError`, статус ставит middleware.
+- Пользователь запроса — `bindCurrentViewer`: токен через `requireBearerToken`, id в `AsyncLocalStorage`. Роут читает `currentViewerId()`, а не разбирает заголовок сам.
+
+```typescript
+// ❌ BAD
+router.post("/login", async (req, res, next) => {
+  try {
+    res.json(await authService.login(req.body));
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
+// ✅ GOOD
+router.post(
+  "/login",
+  asyncRoute(async (req, res) => {
+    res.json(await authService.login(req.body));
+  }),
+);
+```

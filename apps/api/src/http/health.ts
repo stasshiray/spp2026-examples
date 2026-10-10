@@ -17,6 +17,7 @@ export function createHealthRouter(options: HealthRouterOptions = {}) {
   router.get("/api/ready", (_req, res) => {
     if (options.isReady && !options.isReady()) {
       res.status(503).json({ ok: false });
+
       return;
     }
 

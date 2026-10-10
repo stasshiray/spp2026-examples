@@ -1,11 +1,11 @@
-# Dating App — Next.js + Express + PostgreSQL + Drizzle
+# Dating App — React + Express + PostgreSQL + Drizzle
 
-Демо для лекции: два отдельных приложения. Фронтенд на Next.js ходит в Express API, API читает данные из PostgreSQL через Drizzle. У каждого сервиса свой Dockerfile. Можно поднять стек через Docker Compose, задеплоить в **локальный Kubernetes** (Docker Desktop), в **GKE** или на **Render Free Tier**.
+Демо для лекции: два отдельных приложения. Фронтенд — React SPA без SSR — ходит в Express API, API читает данные из PostgreSQL через Drizzle. У каждого сервиса свой Dockerfile. Можно поднять стек через Docker Compose, задеплоить в **локальный Kubernetes** (Docker Desktop), в **GKE** или на **Render Free Tier**.
 
 ## Как это устроено
 
-- `apps/web` — Next.js (App Router), в Docker собирается как `standalone`. Браузер ходит в API по `NEXT_PUBLIC_API_URL`. В Kubernetes URL пустой: запросы идут на тот же host (`/api/profiles`).
-- `apps/api` — Express + TypeScript + Drizzle. Отдаёт `/api/profiles`, `/api/health`, `/api/ready`, `GET /metrics` (Prometheus) и `GET /` (для проб балансировщика). При старте накатывает миграции и сидирует демо-профили. По SIGTERM/SIGINT перестаёт быть ready, закрывает HTTP и пул Postgres.
+- `apps/web` — React SPA (Vite, React Router), без серверного рендера. В Docker статику отдаёт nginx. Браузер ходит в API по `NEXT_PUBLIC_API_URL` (значение вшивается при сборке). В Kubernetes URL пустой: запросы идут на тот же host (`/api/profiles`).
+- `apps/api` — Express + TypeScript + Drizzle. Отдаёт `/api/profiles`, `/api/health`, `/api/ready`, `GET /metrics` (Prometheus), `GET /` (для проб балансировщика) и OpenAPI: `GET /openapi.json`, Swagger UI на `GET /docs`, и AsyncAPI сокета: `GET /asyncapi.json`, страница на `GET /asyncapi`. При старте накатывает миграции и сидирует демо-профили. По SIGTERM/SIGINT перестаёт быть ready, закрывает HTTP и пул Postgres.
 - `apps/web/Dockerfile` и `apps/api/Dockerfile` — отдельные образы, контекст сборки — корень репозитория (npm workspaces).
 - `k8s/manifests/` — Namespace, Postgres (вместе с ConfigMap `dating-app-config`), API, web и Gateway API (`HTTPRoute`) для локального кластера и GKE. Пароль БД не в git: скрипт деплоя создаёт Secret `dating-app-db` в namespace ветки. Порт Postgres — в ConfigMap (`POSTGRES_PORT`, по умолчанию `5432`); под читает его через `envFrom`.
 - Логи: Dozzle в namespace `logs` (`k8s/manifests/cluster/dozzle.yaml`) — живой просмотр stdout/stderr всех подов, тот же UI локально и в GKE. В GKE контейнерные логи дополнительно пишутся в Cloud Logging.
@@ -18,14 +18,18 @@
 ```bash
 cp .env.example .env
 npm install
-docker compose up db -d
+docker compose -f docker-compose.deps.yml up -d
 npm run dev
 ```
 
+`docker-compose.deps.yml` поднимает только зависимости: Postgres и Silo (S3). Полный стек — `docker-compose.yml`, он подключает тот же файл и добавляет API и web.
+
 - фронт: http://localhost:3000
 - API: http://localhost:4000/api/profiles
+- OpenAPI: http://localhost:4000/docs (спека — http://localhost:4000/openapi.json)
+- AsyncAPI сокета: http://localhost:4000/asyncapi (спека — http://localhost:4000/asyncapi.json)
 
-Локальный Postgres в Compose слушает **5433**, чтобы не пересечься с другими контейнерами на 5432. Если база уже поднималась со старым именем (`lecture`) или схемой (`books`), пересоздайте том: `docker compose down -v`, затем снова `docker compose up db -d`. То же для Kubernetes: снесите namespace ветки и задеплойте заново.
+Локальный Postgres в Compose слушает **5433**, чтобы не пересечься с другими контейнерами на 5432. Если база уже поднималась со старым именем (`lecture`) или схемой (`books`), пересоздайте том: `docker compose down -v`, затем снова `docker compose -f docker-compose.deps.yml up -d`. То же для Kubernetes: снесите namespace ветки и задеплойте заново.
 
 Линтер, типы, сборка и тесты (тесты API ходят в Postgres):
 
@@ -54,7 +58,7 @@ docker compose up --build
    - Free PostgreSQL `dating-app-db`
 3. В `render.yaml` стоит `autoDeployTrigger: checksPass`: Render деплоит только после успешных CI checks (линтер, типы, сборка и тесты) на связанной ветке. Если checks падают или их нет, деплой не стартует.
 
-`NEXT_PUBLIC_API_URL` на фронте берётся из публичного URL API-сервиса и нужен на этапе Docker-сборки Next.js.
+`NEXT_PUBLIC_API_URL` на фронте берётся из публичного URL API-сервиса и нужен на этапе Docker-сборки SPA.
 
 Ограничения Free Tier: сервисы засыпают без трафика (холодный старт), бесплатная Postgres ограничена по времени/размеру. SSL к Render Postgres включается в клиенте автоматически (для `localhost` SSL выключен).
 
@@ -65,7 +69,7 @@ docker compose up --build
 1. `npm ci`
 2. линтер
 3. проверка типов (`tsc`)
-4. сборка API (esbuild) и web (`next build`)
+4. сборка API (esbuild) и web (`vite build`)
 5. тесты против Postgres service container
 
 На push в `main` Render сам запускает деплой API и web, когда job `lint-and-test` зелёный.
@@ -83,9 +87,9 @@ docker compose up --build
 ./k8s/deploy-local-kubernetes.sh
 ```
 
-Первые три скрипта — один раз (Envoy Gateway, Dozzle и Grafana); повторный запуск безопасен. Четвёртый поднимает окружение текущей ветки: namespace и URL `http://{ветка}.localhost` (ветка `main` → http://main.localhost). При первом деплое создаётся Secret `dating-app-db` со случайным паролем Postgres; повторный деплой его не трогает. Задать свой: `POSTGRES_PASSWORD=...` (URL-safe: буквы, цифры, `.` `_` `~` `-`). Порт БД — ConfigMap `dating-app-config` (`POSTGRES_PORT=5432` по умолчанию). Смена порта на уже существующем namespace не обновит `DATABASE_URL` в Secret: снесите namespace. Снос namespace удаляет Secret, ConfigMap и PVC.
+Первые три скрипта — один раз (Envoy Gateway, Dozzle и Grafana); повторный запуск безопасен. Четвёртый поднимает окружение текущей ветки: namespace и URL `http://{ветка}.localhost` (ветка `main` → http://main.localhost). Рядом с Postgres стартует Silo (`pgsty/silo`, тот же S3 API): API ходит на `http://silo:9000`, браузер — на `http://silo.{ветка}.localhost`, консоль — `http://silo-console.{ветка}.localhost`. Логин `minio`, пароль `minioadmin`. В GKE Silo не ставится, и у API там пустой `S3_ENDPOINT`. При первом деплое создаётся Secret `dating-app-db` со случайным паролем Postgres; повторный деплой его не трогает. Задать свой: `POSTGRES_PASSWORD=...` (URL-safe: буквы, цифры, `.` `_` `~` `-`). Порт БД — ConfigMap `dating-app-config` (`POSTGRES_PORT=5432` по умолчанию). Смена порта на уже существующем namespace не обновит `DATABASE_URL` в Secret: снесите namespace. Снос namespace удаляет Secret, ConfigMap и PVC.
 
-При остановке пода kubelet сразу снимает его с endpoints и запускает `preStop` (`sleep 5`), затем шлёт SIGTERM. API отвечает 503 на `/api/ready` (liveness `/api/health` остаётся 200), доживает in-flight запросы, закрывает пул и выходит до `terminationGracePeriodSeconds: 30`. У web тот же `preStop` и grace period; Next.js standalone сам закрывает HTTP по SIGTERM.
+При остановке пода kubelet сразу снимает его с endpoints и запускает `preStop` (`sleep 5`), затем шлёт SIGTERM. API отвечает 503 на `/api/ready` (liveness `/api/health` остаётся 200), доживает in-flight запросы, закрывает пул и выходит до `terminationGracePeriodSeconds: 30`. У web тот же `preStop` и grace period; nginx закрывает HTTP по SIGTERM.
 
 Логи всех подов (один раз, как Gateway). Dozzle читает то же, что `kubectl logs`; после удаления пода локально записи пропадают. В GKE копия остаётся в Cloud Logging. `install-local-logs.sh` ставит metrics-server: без Metrics API Dozzle падает (`failed to get pod metrics`), и UI пишет, что не смог подключиться к API.
 
@@ -216,7 +220,7 @@ sum by (namespace, route) (rate(http_request_duration_seconds_count[1m]))
 
 | Команда | Назначение |
 | --- | --- |
-| `npm run dev` | API + Next.js параллельно |
+| `npm run dev` | API + React SPA параллельно |
 | `npm run db:generate` | сгенерировать миграции Drizzle |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | проверка типов (`tsc`) |

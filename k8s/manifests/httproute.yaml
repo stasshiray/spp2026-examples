@@ -16,6 +16,16 @@ spec:
     - matches:
         - path:
             type: PathPrefix
+            value: /api/me/matches/
+      # Chat WebSocket. Envoy's default request timeout is 15s.
+      timeouts:
+        request: "86400s"
+      backendRefs:
+        - name: api
+          port: 4000
+    - matches:
+        - path:
+            type: PathPrefix
             value: /api
       backendRefs:
         - name: api
@@ -24,6 +34,34 @@ spec:
         - path:
             type: Exact
             value: /metrics
+      backendRefs:
+        - name: api
+          port: 4000
+    - matches:
+        - path:
+            type: Exact
+            value: /openapi.json
+      backendRefs:
+        - name: api
+          port: 4000
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /docs
+      backendRefs:
+        - name: api
+          port: 4000
+    - matches:
+        - path:
+            type: Exact
+            value: /asyncapi.json
+      backendRefs:
+        - name: api
+          port: 4000
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /asyncapi
       backendRefs:
         - name: api
           port: 4000

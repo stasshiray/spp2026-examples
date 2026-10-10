@@ -1,6 +1,7 @@
 import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
+import { asyncRoute } from "./http/async-route";
 import {
   ensureDefaultMetrics,
   metricsHandler,
@@ -21,13 +22,12 @@ describe("metrics", () => {
     ensureDefaultMetrics();
     const app = express();
     app.use(metricsMiddleware);
-    app.get("/metrics", async (req, res, next) => {
-      try {
+    app.get(
+      "/metrics",
+      asyncRoute(async (req, res) => {
         await metricsHandler(req, res);
-      } catch (error) {
-        next(error);
-      }
-    });
+      }),
+    );
     app.get("/api/profiles", (_req, res) => {
       res.json([]);
     });

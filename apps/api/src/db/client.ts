@@ -16,10 +16,7 @@ function parseEnvFlag(value: string | undefined, defaultValue: boolean) {
   return value !== "false" && value !== "0";
 }
 
-export function resolveUseSsl(
-  connectionString: string,
-  envValue = process.env.DATABASE_SSL,
-) {
+export function resolveUseSsl(connectionString: string, envValue = process.env.DATABASE_SSL) {
   if (isLocalhost(connectionString)) {
     return false;
   }

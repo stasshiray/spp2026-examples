@@ -41,6 +41,8 @@ docker build --platform linux/amd64 -f ./apps/web/Dockerfile --build-arg NEXT_PU
 docker push "$API_IMAGE"
 docker push "$WEB_IMAGE"
 
+export S3_ENDPOINT=""
+export S3_PUBLIC_ENDPOINT=""
 ensure_postgres_port
 
 gke_apply_manifest "$manifests"/namespace.yaml
