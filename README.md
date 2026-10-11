@@ -5,7 +5,7 @@
 ## Как это устроено
 
 - `apps/web` — React SPA (Vite, React Router), без серверного рендера. В Docker статику отдаёт nginx. Браузер ходит в API по `NEXT_PUBLIC_API_URL` (значение вшивается при сборке). В Kubernetes URL пустой: запросы идут на тот же host (`/api/profiles`).
-- `apps/api` — Express + TypeScript + Drizzle. Отдаёт `/api/profiles`, `/api/health`, `/api/ready`, `GET /metrics` (Prometheus), `GET /` (для проб балансировщика) и OpenAPI: `GET /openapi.json`, Swagger UI на `GET /docs`, и AsyncAPI сокета: `GET /asyncapi.json`, страница на `GET /asyncapi`. При старте накатывает миграции и сидирует демо-профили. По SIGTERM/SIGINT перестаёт быть ready, закрывает HTTP и пул Postgres.
+- `apps/api` — Express + TypeScript + Drizzle. Отдаёт `/api/profiles`, `/api/health`, `/api/ready`, `GET /metrics` (Prometheus), `GET /` (для проб балансировщика) и OpenAPI: `GET /openapi.json` и `GET /openapi.yaml`, Swagger UI на `GET /docs`, и AsyncAPI сокета: `GET /asyncapi.json` и `GET /asyncapi.yaml`, страница на `GET /asyncapi`. При старте накатывает миграции и сидирует демо-профили. По SIGTERM/SIGINT перестаёт быть ready, закрывает HTTP и пул Postgres.
 - `apps/web/Dockerfile` и `apps/api/Dockerfile` — отдельные образы, контекст сборки — корень репозитория (npm workspaces).
 - `k8s/manifests/` — Namespace, Postgres (вместе с ConfigMap `dating-app-config`), API, web и Gateway API (`HTTPRoute`) для локального кластера и GKE. Пароль БД не в git: скрипт деплоя создаёт Secret `dating-app-db` в namespace ветки. Порт Postgres — в ConfigMap (`POSTGRES_PORT`, по умолчанию `5432`); под читает его через `envFrom`.
 - Логи: Dozzle в namespace `logs` (`k8s/manifests/cluster/dozzle.yaml`) — живой просмотр stdout/stderr всех подов, тот же UI локально и в GKE. В GKE контейнерные логи дополнительно пишутся в Cloud Logging.
@@ -26,8 +26,8 @@ npm run dev
 
 - фронт: http://localhost:3000
 - API: http://localhost:4000/api/profiles
-- OpenAPI: http://localhost:4000/docs (спека — http://localhost:4000/openapi.json)
-- AsyncAPI сокета: http://localhost:4000/asyncapi (спека — http://localhost:4000/asyncapi.json)
+- OpenAPI: http://localhost:4000/docs (спека — http://localhost:4000/openapi.json и http://localhost:4000/openapi.yaml)
+- AsyncAPI сокета: http://localhost:4000/asyncapi (спека — http://localhost:4000/asyncapi.json и http://localhost:4000/asyncapi.yaml)
 
 Локальный Postgres в Compose слушает **5433**, чтобы не пересечься с другими контейнерами на 5432. Если база уже поднималась со старым именем (`lecture`) или схемой (`books`), пересоздайте том: `docker compose down -v`, затем снова `docker compose -f docker-compose.deps.yml up -d`. То же для Kubernetes: снесите namespace ветки и задеплойте заново.
 

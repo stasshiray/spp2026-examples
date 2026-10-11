@@ -1,6 +1,7 @@
 import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import { mountOpenApi } from "../http/openapi";
 import { openApiDocument } from "./document";
 
@@ -51,6 +52,11 @@ describe("openapi", () => {
     expect(spec.status).toBe(200);
     expect(spec.body.info.title).toBe("Знакомства");
     expect(spec.body.paths["/api/login"].post.operationId).toBe("login");
+
+    const yaml = await request(app).get("/openapi.yaml");
+    expect(yaml.status).toBe(200);
+    expect(yaml.headers["content-type"]).toMatch(/yaml/);
+    expect(parse(yaml.text)).toEqual(openApiDocument);
 
     const redirect = await request(app).get("/docs");
     expect(redirect.status).toBe(308);

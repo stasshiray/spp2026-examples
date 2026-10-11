@@ -10,15 +10,14 @@ export const asyncApiDocument = {
     title: "Знакомства",
     version: "1.0.0",
     description:
-      "WebSocket чата. Приложение — API: send уходит клиенту, receive приходит от клиента. HTTP API описан в OpenAPI, GET /openapi.json.",
+      "WebSocket чата. Приложение — API: send уходит клиенту, receive приходит от клиента. HTTP API описан в OpenAPI, GET /openapi.json или GET /openapi.yaml.",
   },
   defaultContentType: "application/json",
   servers: {
     local: {
       host: "localhost:4000",
       protocol: "ws",
-      description:
-        "Локальный API. В Kubernetes хост совпадает со страницей, при HTTPS схема wss.",
+      description: "Локальный API. В Kubernetes хост совпадает со страницей, при HTTPS схема wss.",
       security: [{ $ref: "#/components/securitySchemes/sessionCookie" }],
     },
   },
@@ -308,7 +307,13 @@ export const asyncApiDocument = {
           error: { type: "string" },
           code: {
             type: "string",
-            enum: ["invalid_body", "invalid_key", "read_missing", "message_limited", "match_missing"],
+            enum: [
+              "invalid_body",
+              "invalid_key",
+              "read_missing",
+              "message_limited",
+              "match_missing",
+            ],
           },
           status: { type: "integer" },
           resetsAt: {

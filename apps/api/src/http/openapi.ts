@@ -1,10 +1,15 @@
 import type { Express } from "express";
 import { serve, setup } from "swagger-ui-express";
 import { openApiDocument } from "../openapi/document";
+import { sendYaml } from "./yaml";
 
 export function mountOpenApi(app: Express) {
   app.get("/openapi.json", (_req, res) => {
     res.json(openApiDocument);
+  });
+
+  app.get("/openapi.yaml", (_req, res) => {
+    sendYaml(res, openApiDocument);
   });
 
   app.use("/docs", (req, res, next) => {

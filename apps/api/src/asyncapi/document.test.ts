@@ -2,6 +2,7 @@ import { DiagnosticSeverity, Parser } from "@asyncapi/parser";
 import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import { mountAsyncApi } from "../http/asyncapi";
 import { asyncApiDocument } from "./document";
 
@@ -33,6 +34,11 @@ describe("asyncapi", () => {
     expect(spec.status).toBe(200);
     expect(spec.body.info.title).toBe("Знакомства");
     expect(spec.body.channels.chat.address).toBe("/api/me/matches/{id}/chat");
+
+    const yaml = await request(app).get("/asyncapi.yaml");
+    expect(yaml.status).toBe(200);
+    expect(yaml.headers["content-type"]).toMatch(/yaml/);
+    expect(parse(yaml.text)).toEqual(asyncApiDocument);
 
     const redirect = await request(app).get("/asyncapi");
     expect(redirect.status).toBe(308);

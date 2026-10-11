@@ -120,7 +120,7 @@ export const openApiDocument = {
     title: "Знакомства",
     version: "1.0.0",
     description:
-      "HTTP API приложения знакомств. Переписка пары — WebSocket, кадры в AsyncAPI: GET /asyncapi.json. Защищённые методы ждут заголовок Authorization: Bearer. Демо-вход: логин anna, пароль anna.",
+      "HTTP API приложения знакомств. Переписка пары — WebSocket, кадры в AsyncAPI: GET /asyncapi.json или GET /asyncapi.yaml. Защищённые методы ждут заголовок Authorization: Bearer. Демо-вход: логин anna, пароль anna.",
   },
   servers: [{ url: "/" }],
   tags: [
@@ -417,7 +417,7 @@ export const openApiDocument = {
         tags: ["Чат"],
         summary: "Сокет переписки",
         description:
-          "WebSocket upgrade. Сессия — HttpOnly-кука session, её ставит POST /api/login. Кадры, ответы и коды закрытия описаны в AsyncAPI: GET /asyncapi.json, страница — GET /asyncapi.",
+          "WebSocket upgrade. Сессия — HttpOnly-кука session, её ставит POST /api/login. Кадры, ответы и коды закрытия описаны в AsyncAPI: GET /asyncapi.json или GET /asyncapi.yaml, страница — GET /asyncapi.",
         operationId: "openChat",
         parameters: [pathId("id", "Идентификатор пары")],
         responses: {

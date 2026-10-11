@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import type { Express } from "express";
 import { asyncApiDocument } from "../asyncapi/document";
+import { sendYaml } from "./yaml";
 
 const require = createRequire(import.meta.url);
 const componentRoot = dirname(require.resolve("@asyncapi/react-component/package.json"));
@@ -39,6 +40,10 @@ const page = `<!doctype html>
 export function mountAsyncApi(app: Express) {
   app.get("/asyncapi.json", (_req, res) => {
     res.json(asyncApiDocument);
+  });
+
+  app.get("/asyncapi.yaml", (_req, res) => {
+    sendYaml(res, asyncApiDocument);
   });
 
   app.use("/asyncapi", (req, res, next) => {
